@@ -1,10 +1,10 @@
 # Plan: Patcher Core (Safe I/O)
 
-## Phase 1: Core I/O
+## Phase 1: Core I/O [checkpoint: c237a29]
 - [x] Task: Create `tests/test_patcher.py` (Failing/Empty) 7bd1e9d
 - [x] Task: Implement `tools/patcher.py` structure and `read_file`, `write_file` 7bd1e9d
 - [x] Task: Verify Core I/O with tests 7bd1e9d
-- [ ] Task: Conductor - User Manual Verification 'Core I/O' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Core I/O' (Protocol in workflow.md) c237a29
 
 ## Phase 2: Patch Logic
 - [ ] Task: Add tests for `apply_patch` (Idempotency, Not Found, Success)
