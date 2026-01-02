@@ -1,7 +1,17 @@
 import argparse
+import os
 from core.hub import Spine
 
+def ensure_project_structure():
+    """Ensure that the required project directories exist."""
+    required_dirs = ["docs/", "src/", "artifacts/"]
+    for d in required_dirs:
+        if not os.path.exists(d):
+            os.makedirs(d)
+            print(f"Created directory: {d}")
+
 def main():
+    ensure_project_structure()
     parser = argparse.ArgumentParser(description="Conductor Spine Controller")
     parser.add_argument("--autonomous", metavar="INTENT", type=str, help="Run autonomous loop with user intent")
     parser.add_argument("--queue", action="store_true", help="Process pending tasks in the queue")

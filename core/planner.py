@@ -4,7 +4,7 @@ from google import genai
 from google.genai import types
 from tenacity import retry, stop_after_attempt, wait_exponential
 from core.config import load_config
-from core.specs import DispatchStep
+from core.specs import DispatchStep, FeasibilityCheck
 from core.prompts import get_system_prompt
 
 class GeminiClient:
@@ -79,6 +79,53 @@ class GeminiClient:
             raise ValueError(f"Failed to parse JSON response: {str(e)}")
         except Exception as e:
             raise ValueError(f"Failed to validate plan: {str(e)}")
+
+    def refine_plan(self, original_plan: DispatchStep, feedback: FeasibilityCheck) -> DispatchStep:
+        """
+        Refines a plan based on feedback from the Researcher/Spoke.
+        """
+        prompt = f"""
+        Original Task: {original_plan.task_description}
+        Original Context: {original_plan.context}
+
+        Researcher Feedback:
+        - Relevant Files: {feedback.summary.relevant_files}
+        - Constraints: {feedback.summary.technical_constraints}
+        - Missing Info: {feedback.summary.missing_information}
+        - Message: {feedback.message}
+
+        Please refine the plan to address these constraints and missing information.
+        Update the 'task_description' and 'context' fields accordingly.
+        """
+
+        system_instruction = get_system_prompt(self.project_root)
+
+        try:
+             response = self.client.models.generate_content(
+                model=self.model_name,
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    system_instruction=system_instruction
+                )
+            )
+
+             # Attempt to extract JSON if it's wrapped in markdown code blocks
+             text = response.text
+             if "```json" in text:
+                text = text.split("```json")[1].split("```")[0].strip()
+             elif "```" in text:
+                text = text.split("```")[1].split("```")[0].strip()
+
+             data = json.loads(text)
+             return DispatchStep(**data)
+
+        except json.JSONDecodeError as e:
+            # Fallback: Return original plan if parsing fails (for now)
+            # In production, we'd want to retry or raise
+            warnings.warn(f"Failed to parse refined plan JSON: {e}")
+            return original_plan
+        except Exception as e:
+             raise ValueError(f"Failed to refine plan: {str(e)}")
 
     def generate_verification_steps(self, user_intent: str, task_description: str) -> str:
         """

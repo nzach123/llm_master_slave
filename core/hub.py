@@ -4,12 +4,14 @@ import os
 import re
 import xml.etree.ElementTree as ET
 from typing import List
+import json
 from tenacity import retry, stop_after_attempt, wait_fixed
 from core.config import load_config, setup_logging
-from core.specs import DispatchStep, AgentResult, ToolCall
+from core.specs import DispatchStep, AgentResult, ToolCall, KnowledgeSummary, FeasibilityCheck
 from core.planner import GeminiClient
-from core.spokes import CoderSpoke, ReviewerSpoke
+from core.spokes import CoderSpoke, ReviewerSpoke, ResearcherSpoke
 from core.parsing import TagParser
+from core.consensus import ConsensusScorer
 from tools.git_tools import create_checkpoint
 from tools.resource_monitor import check_resources_threshold, wait_for_resources
 from tools import patcher
@@ -27,12 +29,16 @@ class Spine:
         base_url = self.config.get("OLLAMA_BASE_URL")
         self.coder = CoderSpoke(base_url, self.config.get("CODER_MODEL"))
         self.reviewer = ReviewerSpoke(base_url, self.config.get("REVIEWER_MODEL"))
+        self.researcher = ResearcherSpoke(base_url, self.config.get("CODER_MODEL")) # Reuse coder model for now or separate
         
         # Initialize TagParser
         self.parser = TagParser()
 
         # Initialize TaskQueue
         self.queue = TaskQueue()
+
+        # Initialize Consensus Scorer
+        self.scorer = ConsensusScorer()
 
         try:
             self.planner = GeminiClient()
@@ -58,6 +64,10 @@ class Spine:
             return self.coder.handle_task(step)
         elif step.agent_name.lower() == "reviewer":
             return self.reviewer.handle_task(step)
+        elif step.agent_name.lower() == "researcher":
+            # For researcher, we expect JSON output.
+            result = self.researcher.handle_task(step)
+            return result
         else:
             raise ValueError(f"Unknown agent: {step.agent_name}")
     
@@ -113,6 +123,67 @@ class Spine:
         
         return results
 
+    def _negotiate_plan(self, user_intent: str, max_turns: int = 3) -> DispatchStep:
+        """
+        Collaborative planning loop.
+        """
+        self.logger.info("Starting negotiation loop...")
+
+        # 1. Hub proposes Plan v1
+        plan = self.planner.generate_plan(user_intent)
+
+        for turn in range(max_turns):
+            self.logger.info(f"Negotiation Turn {turn + 1}")
+
+            # 2. Spokes (Researcher) analyze feasibility
+            research_step = DispatchStep(
+                agent_name="researcher",
+                task_description=f"Analyze feasibility for: {plan.task_description}",
+                context=plan.context
+            )
+
+            try:
+                result = self.dispatch_to_agent(research_step)
+                # Parse JSON output from Researcher
+                try:
+                    text = result.message
+                    # Robustly strip markdown code blocks if present
+                    if "```json" in text:
+                        text = text.split("```json")[1].split("```")[0].strip()
+                    elif "```" in text:
+                        text = text.split("```")[1].split("```")[0].strip()
+
+                    data = json.loads(text)
+                    summary = KnowledgeSummary(**data)
+                except json.JSONDecodeError:
+                    # Fallback if output is not pure JSON
+                    self.logger.warning("Researcher output not valid JSON. Skipping consensus.")
+                    return plan
+
+                feedback = FeasibilityCheck(
+                    summary=summary,
+                    message="Analysis complete."
+                )
+
+                # 3. Score Consensus
+                score = self.scorer.evaluate(plan.model_dump(), feedback)
+                self.logger.info(f"Consensus Score: {score}")
+
+                if score > 0.8:
+                    self.logger.info("Consensus reached!")
+                    return plan
+
+                # 4. Refine Plan
+                self.logger.info("Score too low. Refining plan...")
+                plan = self.planner.refine_plan(plan, feedback)
+
+            except Exception as e:
+                 self.logger.warning(f"Negotiation step failed: {e}. Proceeding with current plan.")
+                 return plan
+
+        return plan
+
+
     def run_autonomous_loop(self, user_intent: str, max_retries: int = 3, existing_task_id: str = None) -> AgentResult:
         """
         Executes an autonomous loop with retry capability: Plan -> Execute -> Verify -> Retry if needed.
@@ -156,10 +227,15 @@ class Spine:
             self.queue.update_task_state(task_id, step_index=attempt)
 
             try:
-                # 1. Generate Plan (with error context if retrying)
-                self.logger.info("Generating plan...")
-                step = self.planner.generate_plan(user_intent, error_context)
-                self.logger.info(f"Plan generated: Agent={step.agent_name}, Task={step.task_description}")
+                # 1. Negotiate Plan (New Step)
+                if attempt == 1:
+                     step = self._negotiate_plan(user_intent)
+                else:
+                     # For retries, we might want to skip negotiation or re-negotiate with error context
+                     # For now, let's just regenerate based on error context like before
+                     step = self.planner.generate_plan(user_intent, error_context)
+
+                self.logger.info(f"Final Plan for execution: Agent={step.agent_name}, Task={step.task_description}")
 
                 # 2. Dispatch to agent
                 result = self.dispatch_to_agent(step)
