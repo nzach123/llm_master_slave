@@ -4,9 +4,9 @@
 - [x] Task: Update Configuration. (2181e90)
     - [x] Sub-task: Add `OLLAMA_BASE_URL`, `CODER_MODEL`, and `REVIEWER_MODEL` to `core/config.py`.
     - [x] Sub-task: Update `tests/test_config.py` to verify new settings.
-- [ ] Task: Implement Resource Monitoring (`tools/resource_monitor.py`).
-    - [ ] Sub-task: Use `psutil` to implement `get_available_ram()` and `get_available_vram()`.
-    - [ ] Sub-task: Create `tests/test_resource_monitor.py` to verify threshold logic (mocking `psutil`).
+- [x] Task: Implement Resource Monitoring (`tools/resource_monitor.py`). (ae7d77f)
+    - [x] Sub-task: Use `psutil` to implement `get_available_ram()` and `get_available_vram()`.
+    - [x] Sub-task: Create `tests/test_resource_monitor.py` to verify threshold logic (mocking `psutil`).
 - [ ] Task: Conductor - User Manual Verification 'Infrastructure' (Protocol in workflow.md)
 
 ## Phase 2: Spoke Core & Worker Implementation [checkpoint: pending]
