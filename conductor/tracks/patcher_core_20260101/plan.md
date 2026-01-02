@@ -1,7 +1,7 @@
 # Plan: Patcher Core (Safe I/O)
 
 ## Phase 1: Core I/O
-- [ ] Task: Create `tests/test_patcher.py` (Failing/Empty)
+- [~] Task: Create `tests/test_patcher.py` (Failing/Empty)
 - [ ] Task: Implement `tools/patcher.py` structure and `read_file`, `write_file`
 - [ ] Task: Verify Core I/O with tests
 - [ ] Task: Conductor - User Manual Verification 'Core I/O' (Protocol in workflow.md)
