@@ -4,6 +4,7 @@ import os
 import logging
 import tempfile
 from pathlib import Path
+from tools.fuzzy_match import fuzzy_patch
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -112,8 +113,9 @@ def write_file(path: str, content: str) -> None:
 def apply_patch(path: str, search_block: str, replace_block: str) -> bool:
     """
     Applies a patch to a file by replacing the first occurrence of search_block.
+    Falls back to fuzzy patching if exact match fails.
     Idempotent: returns True if replace_block is already present and search_block is missing.
-    Returns False if search_block is not found.
+    Returns False if search_block is not found (even with fuzzy match).
     
     Security: Only allows patches within the project directory.
 
@@ -137,12 +139,12 @@ def apply_patch(path: str, search_block: str, replace_block: str) -> bool:
         logger.info("Patch already applied to %s", path)
         return True
 
-    if search_block not in content:
-        logger.warning("Search block not found in %s", path)
-        return False
+    # Try fuzzy patch (covers both exact and fuzzy match)
+    new_content, success = fuzzy_patch(content, search_block, replace_block)
 
-    # Perform replacement (first occurrence only)
-    new_content = content.replace(search_block, replace_block, 1)
+    if not success:
+        logger.warning("Search block not found in %s (even with fuzzy match)", path)
+        return False
 
     # Write file atomically
     write_file(path, new_content)

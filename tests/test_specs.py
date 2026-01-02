@@ -7,19 +7,19 @@ def test_dispatch_step_valid():
     data = {
         "agent_name": "mock_agent",
         "task_description": "Do something",
-        "context": {"key": "value"}
+        "context_files": ["main.py"]
     }
     step = DispatchStep(**data)
-    assert step.agent_name == "mock_agent"
-    assert step.task_description == "Do something"
-    assert step.context == {"key": "value"}
+    assert step.agent == "mock_agent"
+    assert step.task == "Do something"
+    assert step.context_files == ["main.py"]
 
 def test_dispatch_step_invalid_missing_field():
     """Test DispatchStep fails with missing fields."""
     data = {
         "agent_name": "mock_agent",
         # Missing task_description
-        "context": {}
+        "context_files": []
     }
     with pytest.raises(ValidationError):
         DispatchStep(**data)

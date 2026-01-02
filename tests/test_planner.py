@@ -36,7 +36,7 @@ def test_generate_plan_success():
             mock_response.text = json.dumps({
                 "agent_name": "coder",
                 "task_description": "Write a function",
-                "context": {"file": "main.py"}
+                "context_files": ["main.py"]
             })
             mock_client_instance.models.generate_content.return_value = mock_response
 
@@ -44,7 +44,7 @@ def test_generate_plan_success():
             plan = client.generate_plan("Write a function in main.py")
 
             assert isinstance(plan, DispatchStep)
-            assert plan.agent_name == "coder"
+            assert plan.agent == "coder"
             mock_client_instance.models.generate_content.assert_called_once()
             args, kwargs = mock_client_instance.models.generate_content.call_args
             assert kwargs["model"] == "gemini-2.0-flash"
