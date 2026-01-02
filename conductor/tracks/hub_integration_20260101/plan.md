@@ -2,7 +2,7 @@
 
 ## Phase 1: The Planner Client
 - [x] Task: Create `core/planner.py` skeleton and test file `tests/test_planner.py`. [d3635ac]
-- [ ] Task: Implement `GeminiClient` initialization (loading API key).
+- [x] Task: Implement `GeminiClient` initialization (loading API key). [06f3ac6]
     - *Test:* Verify client fails gracefully without API key.
 - [ ] Task: Implement `generate_plan(user_intent: str) -> DispatchStep`.
     - *Test:* Mock the network call to verify JSON parsing and Pydantic validation logic handles happy/sad paths.
