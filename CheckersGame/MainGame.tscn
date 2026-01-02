@@ -1,5 +1,0 @@
-<scene>
-    <node name="MainGame" type="Node2D">
-        <!-- Add your main game logic here -->
-    </node>
-</scene>

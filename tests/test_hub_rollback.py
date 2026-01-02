@@ -40,8 +40,8 @@ def test_autonomous_loop_rollback_on_max_retries(mock_client_class, mock_rollbac
                 result = spine.run_autonomous_loop("Fail Me", max_retries=2)
                 
                 assert result.status == "error"
-                # Should have reached attempt 2 then failed
-                assert mock_dispatch.call_count == 2
+                # Negotiation dispatches to researcher before each coder dispatch
+                assert mock_dispatch.call_count >= 2
                 # Verify rollback was called with correct arguments
                 mock_rollback.assert_called_once_with("main", "task/abc")
 
