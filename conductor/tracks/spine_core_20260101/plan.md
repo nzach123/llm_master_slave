@@ -6,10 +6,10 @@
     - [x] Sub-task: Define `DispatchStep` model.
     - [x] Sub-task: Define `AgentResult` model.
     - [x] Sub-task: Write unit tests for schema validation (`tests/test_specs.py`).
-- [ ] Task: Implement Git Safety Net (`tools/git_tools.py`).
-    - [ ] Sub-task: Implement `create_checkpoint` using `GitPython`.
-    - [ ] Sub-task: Implement `revert_to_main`.
-    - [ ] Sub-task: Write unit tests for git operations (mocking the actual git binary).
+- [x] Task: Implement Git Safety Net (`tools/git_tools.py`). [061af38]
+    - [x] Sub-task: Implement `create_checkpoint` using `GitPython`.
+    - [x] Sub-task: Implement `revert_to_main`.
+    - [x] Sub-task: Write unit tests for git operations (mocking the actual git binary).
 
 ## Phase 2: The Spine Controller
 - [ ] Task: Implement Logging & Config.
