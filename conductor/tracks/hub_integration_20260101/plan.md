@@ -15,7 +15,7 @@
 - [x] Task: Integrate `core/specs.py` schema definitions into the System Prompt dynamically. [bb09564]
 - [x] Task: Conductor - User Manual Verification 'System Prompts & Context' (Protocol in workflow.md) [19fcb6a]
 
-## Phase 3: Hub Wiring
+## Phase 3: Hub Wiring [checkpoint: 5486172]
 - [x] Task: Update `core/hub.py` to use `Planner` instead of mock data. [448c118]
-- [x] Task: Integration Test - Run `main.py` with a real API key (or recorded mock) to verify the full loop. [ef3c15a]
-- [~] Task: Conductor - User Manual Verification 'Hub Wiring' (Protocol in workflow.md)
+- [x] Task: Integration Test - Run `main.py` with a real API key (or recorded mock) to verify the full loop. [e657603]
+- [x] Task: Conductor - User Manual Verification 'Hub Wiring' (Protocol in workflow.md) [5486172]
