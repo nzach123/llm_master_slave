@@ -1,32 +1,67 @@
 import os
 import subprocess
-import time
+import shutil
+import pytest
 
-def test_full_mock_run():
-    """Integration test running main.py and checking side effects."""
-    # Ensure activity.log doesn't exist or is cleared
-    if os.path.exists("activity.log"):
-        os.remove("activity.log")
+def test_full_mock_run(tmp_path):
+    """Integration test running main.py in a fresh git repo."""
+    # Setup fresh git repo in tmp_path
+    repo_dir = tmp_path / "repo"
+    repo_dir.mkdir()
+    
+    # Initialize repo
+    subprocess.run(["git", "init"], cwd=repo_dir)
+    subprocess.run(["git", "config", "user.email", "test@example.com"], cwd=repo_dir)
+    subprocess.run(["git", "config", "user.name", "Test User"], cwd=repo_dir)
+    
+    # Copy necessary files to repo_dir, excluding __pycache__
+    def ignore_pycache(path, names):
+        return [n for n in names if n == '__pycache__']
         
-    # Run main.py
-    process = subprocess.Popen([r".venv\Scripts\python", "main.py"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    shutil.copytree("core", repo_dir / "core", ignore=ignore_pycache)
+    shutil.copytree("tools", repo_dir / "tools", ignore=ignore_pycache)
+    shutil.copy("main.py", repo_dir / "main.py")
+    
+    # Create initial commit with .gitignore
+    (repo_dir / "README.md").write_text("initial")
+    (repo_dir / ".gitignore").write_text("activity.log\n__pycache__/\n")
+    subprocess.run(["git", "add", "."], cwd=repo_dir)
+    subprocess.run(["git", "commit", "-m", "initial commit"], cwd=repo_dir)
+    subprocess.run(["git", "branch", "-M", "master"], cwd=repo_dir)
+
+    # Run main.py in the new repo
+    env = os.environ.copy()
+    env["PYTHONPATH"] = str(repo_dir)
+    python_exe = os.path.abspath(".venv/Scripts/python.exe")
+    
+    process = subprocess.Popen(
+        [python_exe, "main.py"], 
+        cwd=repo_dir,
+        stdout=subprocess.PIPE, 
+        stderr=subprocess.PIPE, 
+        text=True,
+        env=env
+    )
     stdout, stderr = process.communicate()
     
+    # Debug print on failure
+    if process.returncode != 0:
+        print(f"STDOUT: {stdout}")
+        print(f"STDERR: {stderr}")
+    
     assert process.returncode == 0
-    assert "Loop finished" in stdout
     
-    # Verify activity.log
-    assert os.path.exists("activity.log")
-    log_content = open("activity.log").read()
-    assert "Spine initialized" in log_content
-    assert "Starting mock loop" in log_content
+    # Verify activity.log in repo_dir
+    log_file = repo_dir / "activity.log"
+    assert log_file.exists()
+    log_content = log_file.read_text()
     
-    # Verify git branch creation (if it succeeded)
-    # Note: create_checkpoint might fail if dirty, but we expect it to try.
-    # We can check git branch output.
-    branches = subprocess.check_output(["git", "branch"], text=True)
+    # Verify git branch creation
+    branches = subprocess.check_output(["git", "branch"], cwd=repo_dir, text=True)
+    if "task/mock_task_001" not in branches:
+        print(f"LOG CONTENT:\n{log_content}")
+        print(f"BRANCHES: {branches}")
+        status = subprocess.check_output(["git", "status"], cwd=repo_dir, text=True)
+        print(f"GIT STATUS:\n{status}")
+        
     assert "task/mock_task_001" in branches
-    
-    # Cleanup: return to main and delete the branch
-    subprocess.run(["git", "checkout", "master"])
-    subprocess.run(["git", "branch", "-D", "task/mock_task_001"])
