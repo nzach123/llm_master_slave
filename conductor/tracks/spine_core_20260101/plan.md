@@ -1,7 +1,7 @@
 # Implementation Plan - Track: Spine Core
 
 ## Phase 1: Foundation & Contracts
-- [ ] Task: Create project structure (folders `core`, `tools`, `tests`).
+- [x] Task: Create project structure (folders `core`, `tools`, `tests`). [517e308]
 - [ ] Task: Create `specs.py` with Pydantic models.
     - [ ] Sub-task: Define `DispatchStep` model.
     - [ ] Sub-task: Define `AgentResult` model.
