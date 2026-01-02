@@ -13,7 +13,7 @@
 - [x] Task: Create `core/prompts.py` to store System Instructions. [b5e49f9]
     - *Requirement:* Must include "Product Guidelines" (Technical Minimalism).
 - [x] Task: Integrate `core/specs.py` schema definitions into the System Prompt dynamically. [bb09564]
-- [ ] Task: Conductor - User Manual Verification 'System Prompts & Context' (Protocol in workflow.md)
+- [~] Task: Conductor - User Manual Verification 'System Prompts & Context' (Protocol in workflow.md)
 
 ## Phase 3: Hub Wiring
 - [ ] Task: Update `core/hub.py` to use `Planner` instead of mock data.
