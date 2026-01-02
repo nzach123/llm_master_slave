@@ -9,13 +9,13 @@
     - [x] Sub-task: Create `tests/test_resource_monitor.py` to verify threshold logic (mocking `psutil`).
 - [x] Task: Conductor - User Manual Verification 'Infrastructure' (Protocol in workflow.md)
 
-## Phase 2: Spoke Core & Worker Implementation [checkpoint: pending]
+## Phase 2: Spoke Core & Worker Implementation [checkpoint: 4e1a9c7]
 - [x] Task: Create `core/spokes.py`. (48cfa8e)
     - [x] Sub-task: Define `BaseSpoke` and specialized `CoderSpoke`/`ReviewerSpoke`.
     - [x] Sub-task: Implement synchronous Ollama request logic using `httpx`.
 - [x] Task: Create `tests/test_spokes.py`. (48cfa8e)
     - [x] Sub-task: Mock `httpx.Client.post` to verify prompt injection and error handling.
-- [ ] Task: Conductor - User Manual Verification 'Spoke Implementation' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Spoke Implementation' (Protocol in workflow.md)
 
 ## Phase 3: Hub & Spine Integration [checkpoint: pending]
 - [ ] Task: Update `core/hub.py` (Spine class).
