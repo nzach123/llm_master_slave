@@ -15,10 +15,10 @@
 - [x] Task: Implement Logging & Config. [b4a5113]
     - [x] Sub-task: Setup `python-dotenv` to load `.env`.
     - [x] Sub-task: Configure standard logging to `activity.log`.
-- [ ] Task: Create `core/hub.py` (The Spine).
-    - [ ] Sub-task: Implement the `Spine` class initialization.
-    - [ ] Sub-task: Implement a `run_mock_loop` method.
-    - [ ] Sub-task: Integrate `tenacity` for a simple retry loop on a mock function.
+- [x] Task: Create `core/hub.py` (The Spine). [dc5a07e]
+    - [x] Sub-task: Implement the `Spine` class initialization.
+    - [x] Sub-task: Implement a `run_mock_loop` method.
+    - [x] Sub-task: Integrate `tenacity` for a simple retry loop on a mock function.
 - [ ] Task: Integration Test.
     - [ ] Sub-task: Create a `main.py` entrypoint that uses `Spine`.
     - [ ] Sub-task: Run the loop and verify `activity.log` contains expected entries.
