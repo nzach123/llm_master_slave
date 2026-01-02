@@ -10,11 +10,11 @@
 - [x] Task: Conductor - User Manual Verification 'Infrastructure' (Protocol in workflow.md)
 
 ## Phase 2: Spoke Core & Worker Implementation [checkpoint: pending]
-- [ ] Task: Create `core/spokes.py`.
-    - [ ] Sub-task: Define `BaseSpoke` and specialized `CoderSpoke`/`ReviewerSpoke`.
-    - [ ] Sub-task: Implement synchronous Ollama request logic using `httpx`.
-- [ ] Task: Create `tests/test_spokes.py`.
-    - [ ] Sub-task: Mock `httpx.Client.post` to verify prompt injection and error handling.
+- [x] Task: Create `core/spokes.py`. (48cfa8e)
+    - [x] Sub-task: Define `BaseSpoke` and specialized `CoderSpoke`/`ReviewerSpoke`.
+    - [x] Sub-task: Implement synchronous Ollama request logic using `httpx`.
+- [x] Task: Create `tests/test_spokes.py`. (48cfa8e)
+    - [x] Sub-task: Mock `httpx.Client.post` to verify prompt injection and error handling.
 - [ ] Task: Conductor - User Manual Verification 'Spoke Implementation' (Protocol in workflow.md)
 
 ## Phase 3: Hub & Spine Integration [checkpoint: pending]
