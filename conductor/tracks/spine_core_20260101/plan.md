@@ -19,10 +19,10 @@
     - [x] Sub-task: Implement the `Spine` class initialization.
     - [x] Sub-task: Implement a `run_mock_loop` method.
     - [x] Sub-task: Integrate `tenacity` for a simple retry loop on a mock function.
-- [~] Task: Integration Test.
-    - [ ] Sub-task: Create a `main.py` entrypoint that uses `Spine`.
-    - [ ] Sub-task: Run the loop and verify `activity.log` contains expected entries.
-    - [ ] Sub-task: Verify a git branch was created during the run.
+- [x] Task: Integration Test. [03d2969]
+    - [x] Sub-task: Create a `main.py` entrypoint that uses `Spine`.
+    - [x] Sub-task: Run the loop and verify `activity.log` contains expected entries.
+    - [x] Sub-task: Verify a git branch was created during the run.
 
 ## Phase 3: Final Verification
 - [ ] Task: Run full test suite (`pytest`).
