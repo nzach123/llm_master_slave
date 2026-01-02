@@ -1,0 +1,5 @@
+<Scene>
+       <Node name="Piece" type="Sprite2D">
+           <!-- Add sprite for the piece -->
+       </Node>
+   </Scene>

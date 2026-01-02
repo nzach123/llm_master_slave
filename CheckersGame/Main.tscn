@@ -1,0 +1,6 @@
+<Scene>
+       <Node name="Main" type="Control">
+           <Child name="Board" type="Node2D"/>
+           <Child name="Pieces" type="Node2D"/>
+       </Node>
+   </Scene>

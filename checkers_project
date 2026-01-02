@@ -1,0 +1,15 @@
+# Project structure for Checkers game
+
+# Directory creation script
+import os
+
+def create_project_directory():
+    project_dir = 'checkers_game'
+    if not os.path.exists(project_dir):
+        os.makedirs(project_dir)
+        print(f"Project directory '{project_dir}' created.")
+    else:
+        print(f"Project directory '{project_dir}' already exists.")
+
+if __name__ == "__main__":
+    create_project_directory()

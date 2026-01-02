@@ -76,6 +76,13 @@ def write_file(path: str, content: str) -> None:
     """
     # Validate path is within project directory
     target_path = validate_path(path)
+    
+    # [Fix] Reject writing to existing directories
+    if target_path.exists() and target_path.is_dir():
+        msg = f"Cannot write to path '{path}' because it is an existing directory."
+        logger.error(msg)
+        raise IsADirectoryError(msg)
+        
     try:
         # Create parent directories
         target_path.parent.mkdir(parents=True, exist_ok=True)

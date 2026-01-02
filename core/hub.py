@@ -212,6 +212,9 @@ class Spine:
                         self.logger.error("Max retries reached. Terminating and rolling back.")
                         try:
                             from tools.git_tools import rollback
+                            # Close TinyDB to release file lock before git operations
+                            if hasattr(self.queue, 'close'):
+                                self.queue.close()
                             rollback(original_branch, task_branch)
                         except Exception as re:
                             self.logger.error(f"Rollback failed: {re}")
@@ -246,6 +249,9 @@ class Spine:
                     self.logger.error("Max retries reached after exception. Rolling back.")
                     try:
                         from tools.git_tools import rollback
+                        # Close TinyDB to release file lock before git operations
+                        if hasattr(self.queue, 'close'):
+                            self.queue.close()
                         rollback(original_branch, task_branch)
                     except Exception as re:
                         self.logger.error(f"Rollback failed: {re}")

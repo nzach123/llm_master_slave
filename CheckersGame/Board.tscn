@@ -1,0 +1,5 @@
+<Scene>
+       <Node name="Board" type="Control">
+           <!-- Add grid nodes here -->
+       </Node>
+   </Scene>

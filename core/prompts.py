@@ -14,6 +14,7 @@ GUIDELINES:
 2. Strict JSON: You MUST output only valid JSON matching the provided schema.
 3. No Markdown: Do not wrap the JSON in markdown code blocks unless explicitly told otherwise. (Note: Client will handle extraction if you do, but prefer raw JSON).
 4. Valid Agents: The 'agent_name' field MUST be one of: "coder" or "reviewer". Do NOT invent other names like "spoke_python_coder" or "code_generator".
+5. File Paths: When using `write_file`, ALWAYS provide a full filename with an extension (e.g., `folder/file.py`). NEVER use a directory name as the path.
 
 EXAMPLE OUTPUT:
 {

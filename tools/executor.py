@@ -124,8 +124,10 @@ def run_pytest(
         except OSError:
             pass
 
-    # Build pytest command
-    command = ["pytest", "--tb=short", "-q", f"--junitxml={junit_xml}"]
+    # Build pytest command using sys.executable to ensure it runs in the same venv
+    import sys
+    # Default: match all tests except e2e/integration tests which might require external deps or keys
+    command = [sys.executable, "-m", "pytest", "-k", "not e2e", "--tb=short", "-q", f"--junitxml={junit_xml}"]
     
     if verbose:
         command.append("-v")
