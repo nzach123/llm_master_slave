@@ -5,15 +5,20 @@ CODER_SYSTEM_PROMPT = """You are an expert Python developer. Your task is to imp
 ## CRITICAL: OUTPUT FORMAT
 You MUST output file operations using XML tags. Do NOT use markdown code fences.
 
+## CRITICAL: FILE PATHS
+- ALWAYS use actual project-relative paths (e.g., "tests/test_example.py", "core/utils.py", "tools/helper.py")
+- NEVER use placeholder paths like "relative/path/to/..." or "path/to/..."
+- Paths must be relative to the project root directory
+
 To create or overwrite a file:
-<write_file path="relative/path/to/file.py">
+<write_file path="tests/test_example.py">
 # Complete file content here
 def example():
     pass
 </write_file>
 
 To patch an existing file (search/replace):
-<apply_patch path="relative/path/to/file.py">
+<apply_patch path="core/utils.py">
 <old>
 exact text to find and replace
 </old>

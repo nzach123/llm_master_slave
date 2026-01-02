@@ -84,3 +84,8 @@ class TaskQueue:
         """Retrieves a specific task."""
         Task = Query()
         return self.tasks.get(Task.task_id == task_id)
+
+    def close(self) -> None:
+        """Close the TinyDB connection to release file locks."""
+        if self.db:
+            self.db.close()

@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLM Master-Slave Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>🤖 LLM Master-Slave Dashboard</h1>
+            <p class="subtitle">Hub-and-Spoke Autonomous Agent System</p>
+        </header>
+
+        <!-- Error Message Display -->
+        <div id="error-message" class="error-banner" style="display: none;"></div>
+
+        <div class="dashboard-grid">
+            <!-- Task Queue Section -->
+            <section id="task-queue" class="card">
+                <div class="card-header">
+                    <h2>📋 Task Queue</h2>
+                    <div class="queue-controls">
+                        <span id="queue-status" class="queue-status status-stopped">Stopped</span>
+                        <button id="start-queue-btn" class="btn-start">▶ Start Queue</button>
+                    </div>
+                </div>
+                <ul id="task-list">
+                    <li class="loading">Loading tasks...</li>
+                </ul>
+            </section>
+
+            <!-- System Health Section -->
+            <section id="system-health" class="card">
+                <h2>💻 System Health</h2>
+                <div id="health-status">
+                    <p class="loading">Loading status...</p>
+                </div>
+            </section>
+
+            <!-- Task Input Section -->
+            <section id="task-input" class="card">
+                <h2>➕ Add Task</h2>
+                <form id="task-form">
+                    <textarea id="task-description"
+                        placeholder="Enter task intent (e.g., 'Create a new REST endpoint')..." rows="3"></textarea>
+                    <button type="submit">Submit Task</button>
+                </form>
+            </section>
+
+            <!-- Logs Section -->
+            <section id="logs" class="card logs-card">
+                <h2>📜 Activity Logs</h2>
+                <div id="log-container">
+                    <p class="loading">Loading logs...</p>
+                </div>
+            </section>
+        </div>
+    </div>
+    <script src="app.js"></script>
+</body>
+
+</html>
