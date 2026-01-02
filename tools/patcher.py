@@ -1,3 +1,5 @@
+"""Patcher module for safe file I/O and atomic patching."""
+
 import os
 import logging
 import tempfile
@@ -23,10 +25,10 @@ def read_file(path: str) -> str:
     try:
         return Path(path).read_text(encoding="utf-8")
     except FileNotFoundError:
-        logger.error(f"File not found: {path}")
+        logger.error("File not found: %s", path)
         raise
     except Exception as e:
-        logger.error(f"Error reading file {path}: {e}")
+        logger.error("Error reading file %s: %s", path, e)
         raise
 
 def write_file(path: str, content: str) -> None:
@@ -45,16 +47,21 @@ def write_file(path: str, content: str) -> None:
 
         # Write to a temporary file in the same directory to ensure atomic move
         # Delete=False is required on Windows to close before rename
-        with tempfile.NamedTemporaryFile("w", dir=target_path.parent, delete=False, encoding="utf-8") as tmp_file:
+        with tempfile.NamedTemporaryFile(
+            "w",
+            dir=target_path.parent,
+            delete=False,
+            encoding="utf-8"
+        ) as tmp_file:
             tmp_file.write(content)
             tmp_path = tmp_file.name
 
         # Atomic replacement
         os.replace(tmp_path, target_path)
-        logger.info(f"Successfully wrote to {path}")
+        logger.info("Successfully wrote to %s", path)
 
     except Exception as e:
-        logger.error(f"Error writing to file {path}: {e}")
+        logger.error("Error writing to file %s: %s", path, e)
         # Clean up temp file if it exists and wasn't moved
         if 'tmp_path' in locals() and os.path.exists(tmp_path):
             os.remove(tmp_path)
@@ -78,11 +85,11 @@ def apply_patch(path: str, search_block: str, replace_block: str) -> bool:
 
     # Idempotency check
     if replace_block in content and search_block not in content:
-        logger.info(f"Patch already applied to {path}")
+        logger.info("Patch already applied to %s", path)
         return True
 
     if search_block not in content:
-        logger.warning(f"Search block not found in {path}")
+        logger.warning("Search block not found in %s", path)
         return False
 
     # Perform replacement (first occurrence only)
@@ -90,5 +97,5 @@ def apply_patch(path: str, search_block: str, replace_block: str) -> bool:
 
     # Write file atomically
     write_file(path, new_content)
-    logger.info(f"Successfully applied patch to {path}")
+    logger.info("Successfully applied patch to %s", path)
     return True
