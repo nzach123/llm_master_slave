@@ -1,6 +1,8 @@
 """
 System prompts for the Hub (Gemini) Planner.
 """
+import json
+from core.specs import DispatchStep
 
 SYSTEM_PROMPT = """
 You are the Hub (Planner) for an LLM master-slave agent system.
@@ -12,8 +14,15 @@ GUIDELINES:
 3. No Markdown: Do not wrap the JSON in markdown code blocks unless explicitly told otherwise. (Note: Client will handle extraction if you do, but prefer raw JSON).
 
 SCHEMA:
-The response must match this Pydantic schema for DispatchStep:
-- agent_name (str): The name of the target agent (e.g., 'coder', 'reviewer').
-- task_description (str): Detailed description of the atomic task.
-- context (dict): A dictionary of required context (files, variables, previous results).
+The response must match the following JSON schema:
 """
+
+def get_system_prompt() -> str:
+    """
+    Generate the system prompt dynamically including the Pydantic schema.
+    
+    Returns:
+        The full system prompt string.
+    """
+    schema = DispatchStep.model_json_schema()
+    return f"{SYSTEM_PROMPT}\n{json.dumps(schema, indent=2)}"

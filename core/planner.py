@@ -2,6 +2,7 @@ import json
 import google.generativeai as genai
 from core.config import load_config
 from core.specs import DispatchStep
+from core.prompts import get_system_prompt
 
 class GeminiClient:
     def __init__(self):
@@ -12,7 +13,10 @@ class GeminiClient:
             raise ValueError("GEMINI_API_KEY not found in configuration")
             
         genai.configure(api_key=self.api_key)
-        self.model = genai.GenerativeModel("gemini-2.0-flash")
+        self.model = genai.GenerativeModel(
+            model_name="gemini-2.0-flash",
+            system_instruction=get_system_prompt()
+        )
 
     def generate_plan(self, user_intent: str) -> DispatchStep:
         """
@@ -27,8 +31,7 @@ class GeminiClient:
         Raises:
             ValueError: If the model response cannot be parsed or validated.
         """
-        prompt = f"Generate a JSON response for the following intent: {user_intent}"
-        response = self.model.generate_content(prompt)
+        response = self.model.generate_content(user_intent)
         
         try:
             # Attempt to extract JSON if it's wrapped in markdown code blocks
