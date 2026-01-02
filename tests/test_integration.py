@@ -2,6 +2,7 @@ import os
 import subprocess
 import shutil
 import pytest
+import sys
 
 def test_full_mock_run(tmp_path):
     """Integration test running main.py in a fresh git repo."""
@@ -57,7 +58,8 @@ tools.git_tools.create_checkpoint = MagicMock()
     # Ensure GEMINI_API_KEY is present for Planner init (though mock loop doesn't use it, initialization does)
     env["GEMINI_API_KEY"] = "test_key"
     
-    python_exe = os.path.abspath(".venv/Scripts/python.exe")
+    # Use the current python executable
+    python_exe = sys.executable
     
     process = subprocess.Popen(
         [python_exe, "main.py"], 

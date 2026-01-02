@@ -10,17 +10,29 @@ def get_current_branch() -> str:
 def create_checkpoint(task_id: str) -> str:
     """
     Creates a new branch for the task and returns its name.
+    If the branch already exists (resume scenario), checks it out.
     Fails if working directory is not clean.
     """
     repo = Repo(".")
     
+    # We allow dirty state ONLY if we are already on the correct task branch (resuming mid-work)
+    # But for safety, let's enforce clean state before switching/creating.
     if repo.is_dirty(untracked_files=True):
-        raise Exception("Working directory is not clean. Please commit or stash changes before starting autonomous loop.")
+        # Exception: if we are already on the target branch, maybe we don't care?
+        # But safest is to require clean start.
+        raise Exception("Working directory is not clean. Please commit or stash changes before starting/resuming autonomous loop.")
         
     branch_name = f"task/{task_id}"
-    new_branch = repo.create_head(branch_name)
-    new_branch.checkout()
-    logger.info(f"Created and checked out task branch: {branch_name}")
+
+    # Check if branch exists
+    if branch_name in repo.heads:
+        logger.info(f"Task branch {branch_name} already exists. Checking out...")
+        repo.heads[branch_name].checkout()
+    else:
+        new_branch = repo.create_head(branch_name)
+        new_branch.checkout()
+        logger.info(f"Created and checked out task branch: {branch_name}")
+
     return branch_name
 
 def rollback(original_branch: str, task_branch: str = None) -> None:

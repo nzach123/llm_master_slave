@@ -6,6 +6,8 @@ Provides safe subprocess execution with timeout and output capture.
 
 import subprocess
 import logging
+import os
+import xml.etree.ElementTree as ET
 from typing import Dict, Any, List, Optional
 
 logger = logging.getLogger(__name__)
@@ -100,21 +102,30 @@ def run_command(
 def run_pytest(
     test_path: Optional[str] = None,
     verbose: bool = False,
-    timeout: int = 180
+    timeout: int = 180,
+    junit_xml: str = "test_report.xml"
 ) -> ExecutionResult:
     """
-    Run pytest with optimized output formatting.
+    Run pytest with structured XML output.
     
     Args:
         test_path: Specific test file or directory (default: all tests)
         verbose: Enable verbose mode (default: False for minimal output)
         timeout: Timeout in seconds (default: 180)
+        junit_xml: Path to save the JUnit XML report
         
     Returns:
         ExecutionResult with test output
     """
-    # Build pytest command with minimal output
-    command = ["pytest", "--tb=short", "-q"]
+    # Clean up old report if exists
+    if os.path.exists(junit_xml):
+        try:
+            os.remove(junit_xml)
+        except OSError:
+            pass
+
+    # Build pytest command
+    command = ["pytest", "--tb=short", "-q", f"--junitxml={junit_xml}"]
     
     if verbose:
         command.append("-v")
@@ -122,7 +133,7 @@ def run_pytest(
     if test_path:
         command.append(test_path)
     
-    logger.info("Running pytest...")
+    logger.info(f"Running pytest (report={junit_xml})...")
     result = run_command(command, timeout=timeout)
     
     if result.success:
@@ -133,24 +144,61 @@ def run_pytest(
     return result
 
 
-def parse_pytest_output(output: str) -> Dict[str, Any]:
+def parse_pytest_output(output: str, xml_path: str = "test_report.xml") -> Dict[str, Any]:
     """
-    Parse pytest output to extract key information.
+    Parse pytest output, prioritizing XML report for structured failure details.
     
     Args:
-        output: stdout from pytest
+        output: stdout from pytest (fallback)
+        xml_path: path to the JUnit XML report
         
     Returns:
         Dict with parsed test results
     """
+
+    if os.path.exists(xml_path):
+        try:
+            tree = ET.parse(xml_path)
+            root = tree.getroot()
+
+            summary = {
+                "passed": int(root.get("tests", 0)) - int(root.get("failures", 0)) - int(root.get("errors", 0)),
+                "failed": int(root.get("failures", 0)),
+                "errors": int(root.get("errors", 0)),
+                "total": int(root.get("tests", 0))
+            }
+
+            failed_tests = []
+            for testcase in root.findall(".//testcase"):
+                # check for failure or error
+                failure = testcase.find("failure")
+                error = testcase.find("error")
+
+                if failure is not None or error is not None:
+                    name = testcase.get("name")
+                    classname = testcase.get("classname")
+                    msg = failure.get("message") if failure is not None else error.get("message")
+                    # Limit message length
+                    if msg and len(msg) > 500:
+                        msg = msg[:500] + "..."
+
+                    failed_tests.append(f"FAILED {classname}::{name} - {msg}")
+
+            return {
+                "summary": summary,
+                "failed_tests": failed_tests
+            }
+
+        except ET.ParseError as e:
+            logger.warning(f"Failed to parse XML report: {e}. Falling back to stdout parsing.")
+
+    # Fallback to stdout parsing if XML missing or broken
     lines = output.strip().split('\n')
     
-    # Look for the summary line (e.g., "3 passed, 1 failed in 2.5s")
     summary = {"passed": 0, "failed": 0, "errors": 0, "total": 0}
     failed_tests = []
     
     for line in lines:
-        # Parse summary line
         if " passed" in line or " failed" in line:
             if "passed" in line:
                 try:
@@ -163,7 +211,6 @@ def parse_pytest_output(output: str) -> Dict[str, Any]:
                 except (ValueError, IndexError):
                     pass
         
-        # Capture FAILED test names
         if line.startswith("FAILED"):
             failed_tests.append(line)
     

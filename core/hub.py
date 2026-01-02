@@ -9,10 +9,12 @@ from core.config import load_config, setup_logging
 from core.specs import DispatchStep, AgentResult, ToolCall
 from core.planner import GeminiClient
 from core.spokes import CoderSpoke, ReviewerSpoke
+from core.parsing import TagParser
 from tools.git_tools import create_checkpoint
-from tools.resource_monitor import check_resources_threshold
+from tools.resource_monitor import check_resources_threshold, wait_for_resources
 from tools import patcher
 from tools.executor import run_pytest, parse_pytest_output
+from tools.queue import TaskQueue
 
 class Spine:
     def __init__(self):
@@ -26,6 +28,12 @@ class Spine:
         self.coder = CoderSpoke(base_url, self.config.get("CODER_MODEL"))
         self.reviewer = ReviewerSpoke(base_url, self.config.get("REVIEWER_MODEL"))
         
+        # Initialize TagParser
+        self.parser = TagParser()
+
+        # Initialize TaskQueue
+        self.queue = TaskQueue()
+
         try:
             self.planner = GeminiClient()
         except ValueError as e:
@@ -37,12 +45,14 @@ class Spine:
         """Dispatches a step to a specific Spoke with resource checks."""
         self.logger.info(f"Dispatching task to agent: {step.agent_name}")
         
-        # Pre-flight resource check (Hard Fail policy)
+        # Pre-flight resource check (Wait-State Policy)
         skip_check = os.getenv("SKIP_RESOURCE_CHECK", "false").lower() == "true"
-        if not skip_check and not check_resources_threshold(min_gb=2.0):
-            error_msg = "System resources below threshold (2GB). Terminating for stability."
-            self.logger.critical(error_msg)
-            raise RuntimeError(error_msg)
+        if not skip_check:
+            # Wait up to 10 minutes (600s) for resources
+            if not wait_for_resources(min_gb=2.0, timeout_seconds=600):
+                 error_msg = "System resources below threshold (2GB) after timeout. Terminating for stability."
+                 self.logger.critical(error_msg)
+                 raise RuntimeError(error_msg)
 
         if step.agent_name.lower() == "coder":
             return self.coder.handle_task(step)
@@ -54,45 +64,10 @@ class Spine:
     def _parse_tool_calls(self, text: str) -> List[ToolCall]:
         """
         Parse XML tool calls from LLM output.
-        Uses regex for robust extraction of raw code blocks which might contain unescaped XML chars.
+        Uses TagParser for robust extraction of raw code blocks.
         """
-        tool_calls = []
-        
-        # Extract write_file operations
-        # Pattern: <write_file path="([^"]*)">(.*?)</write_file>
-        write_pattern = re.compile(r'<write_file\s+path=["\']([^"\']*)["\']\s*>(.*?)</write_file>', re.DOTALL)
-        for match in write_pattern.finditer(text):
-            path = match.group(1)
-            content = match.group(2)
-            if path:
-                tool_calls.append(ToolCall(
-                    action="write_file",
-                    path=path,
-                    content=content.strip()
-                ))
-                self.logger.info(f"Parsed write_file: {path}")
-        
-        # Extract apply_patch operations
-        # Pattern: <apply_patch path="([^"]*)">.*?<old>(.*?)</old>.*?<new>(.*?)</new>.*?</apply_patch>
-        patch_pattern = re.compile(
-            r'<apply_patch\s+path=["\']([^"\']*)["\']\s*>.*?<old>(.*?)</old>.*?<new>(.*?)</new>.*?</apply_patch>',
-            re.DOTALL
-        )
-        for match in patch_pattern.finditer(text):
-            path = match.group(1)
-            old_content = match.group(2)
-            new_content = match.group(3)
-            
-            if path:
-                tool_calls.append(ToolCall(
-                    action="apply_patch",
-                    path=path,
-                    content=new_content, # No strip here to keep exact whitespace if needed, but usually we do
-                    old_content=old_content
-                ))
-                self.logger.info(f"Parsed apply_patch: {path}")
-        
-        return tool_calls
+        self.logger.info("Parsing tool calls from LLM output...")
+        return self.parser.parse_tool_calls(text)
     
     def _execute_tool_calls(self, tool_calls: List[ToolCall]) -> dict:
         """
@@ -138,13 +113,14 @@ class Spine:
         
         return results
 
-    def run_autonomous_loop(self, user_intent: str, max_retries: int = 3) -> AgentResult:
+    def run_autonomous_loop(self, user_intent: str, max_retries: int = 3, existing_task_id: str = None) -> AgentResult:
         """
         Executes an autonomous loop with retry capability: Plan -> Execute -> Verify -> Retry if needed.
         
         Args:
             user_intent: The high-level goal from the user.
             max_retries: Maximum number of retry attempts (default: 3)
+            existing_task_id: ID of an existing task if resuming/processing from queue
             
         Returns:
             The final result of the agent execution.
@@ -152,8 +128,8 @@ class Spine:
         if not self.planner:
             raise RuntimeError("Planner not initialized. Cannot run autonomous loop.")
 
-        task_id = f"task_{uuid.uuid4().hex[:8]}"
-        self.logger.info(f"Starting autonomous loop for task: {task_id}")
+        task_id = existing_task_id or f"task_{uuid.uuid4().hex[:8]}"
+        self.logger.info(f"Starting/Resuming autonomous loop for task: {task_id}")
         self.logger.info(f"User Intent: {user_intent}")
 
         original_branch = "main"
@@ -162,6 +138,10 @@ class Spine:
             from tools.git_tools import get_current_branch, rollback
             original_branch = get_current_branch()
             task_branch = create_checkpoint(task_id)
+
+            # Update task state with branch info
+            self.queue.update_task_state(task_id, git_branch=task_branch)
+
         except Exception as e:
             self.logger.warning(f"Git checkpoint skipped or failed: {e}")
 
@@ -172,6 +152,9 @@ class Spine:
             attempt += 1
             self.logger.info(f"Attempt {attempt}/{max_retries}")
             
+            # Update task progress
+            self.queue.update_task_state(task_id, step_index=attempt)
+
             try:
                 # 1. Generate Plan (with error context if retrying)
                 self.logger.info("Generating plan...")

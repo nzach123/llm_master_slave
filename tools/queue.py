@@ -19,15 +19,24 @@ class TaskQueue:
             "created_at": datetime.datetime.now().isoformat(),
             "updated_at": datetime.datetime.now().isoformat(),
             "attempts": 0,
-            "history": []
+            "history": [],
+            "git_branch": None, # Track git branch
+            "last_step_index": 0 # Track progress
         })
         return task_id
 
     def get_pending_tasks(self) -> List[Dict]:
         """Returns all pending tasks sorted by priority."""
         Task = Query()
+        # Also return running tasks if we want to resume them?
+        # For now, just pending.
         pending = self.tasks.search(Task.status == "pending")
         return sorted(pending, key=lambda x: x["priority"], reverse=True)
+
+    def get_running_tasks(self) -> List[Dict]:
+        """Returns tasks that were interrupted (status='running')."""
+        Task = Query()
+        return self.tasks.search(Task.status == "running")
 
     def update_task_status(self, task_id: str, status: str, result: Optional[str] = None) -> None:
         """Updates the status of a task."""
@@ -39,6 +48,19 @@ class TaskQueue:
         if result:
             update_data["result"] = result
             
+        self.tasks.update(update_data, Task.task_id == task_id)
+
+    def update_task_state(self, task_id: str, git_branch: str = None, step_index: int = None):
+        """Updates the execution state (branch, step) of a task."""
+        Task = Query()
+        update_data = {
+            "updated_at": datetime.datetime.now().isoformat()
+        }
+        if git_branch:
+            update_data["git_branch"] = git_branch
+        if step_index is not None:
+            update_data["last_step_index"] = step_index
+
         self.tasks.update(update_data, Task.task_id == task_id)
 
     def add_attempt(self, task_id: str, error: str) -> None:

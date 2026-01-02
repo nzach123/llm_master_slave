@@ -6,4 +6,4 @@ python-dotenv
 tinydb
 psutil
 httpx
-google-generativeai
+google-genai

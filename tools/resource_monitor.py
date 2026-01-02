@@ -1,6 +1,7 @@
 import psutil
 import subprocess
 import logging
+import time
 
 logger = logging.getLogger(__name__)
 
@@ -36,11 +37,41 @@ def check_resources_threshold(min_gb=2.0):
     vram = get_available_vram()
     
     if ram < min_gb:
-        logger.error(f"System RAM below threshold: {ram:.2f}GB < {min_gb}GB")
+        logger.warning(f"System RAM below threshold: {ram:.2f}GB < {min_gb}GB")
         return False
     
     if vram < min_gb:
-        logger.error(f"VRAM below threshold: {vram:.2f}GB < {min_gb}GB")
+        logger.warning(f"VRAM below threshold: {vram:.2f}GB < {min_gb}GB")
         return False
         
     return True
+
+def wait_for_resources(min_gb=2.0, timeout_seconds=600, check_interval=30):
+    """
+    Wait for resources to become available.
+
+    Args:
+        min_gb: Minimum GB required for RAM and VRAM.
+        timeout_seconds: Maximum time to wait in seconds (default: 10 mins).
+        check_interval: Time to sleep between checks (default: 30s).
+
+    Returns:
+        True if resources became available, False if timeout reached.
+    """
+    start_time = time.time()
+
+    if check_resources_threshold(min_gb):
+        return True
+
+    logger.info(f"Resources low (<{min_gb}GB). Entering wait loop (timeout={timeout_seconds}s)...")
+
+    while time.time() - start_time < timeout_seconds:
+        time.sleep(check_interval)
+        if check_resources_threshold(min_gb):
+            logger.info("Resources recovered.")
+            return True
+
+        logger.info(f"Still waiting for resources... ({int(time.time() - start_time)}s elapsed)")
+
+    logger.error(f"Resource wait timed out after {timeout_seconds}s")
+    return False

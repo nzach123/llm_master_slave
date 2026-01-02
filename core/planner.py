@@ -1,10 +1,7 @@
 import json
 import warnings
-
-# Suppress warnings from deprecated google.generativeai
-warnings.simplefilter(action='ignore', category=FutureWarning)
-
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 from tenacity import retry, stop_after_attempt, wait_exponential
 from core.config import load_config
 from core.specs import DispatchStep
@@ -27,12 +24,10 @@ class GeminiClient:
             
         self.model_name = config.get("GEMINI_MODEL", "gemini-1.5-flash")
         
-        genai.configure(api_key=self.api_key)
-        self.model = genai.GenerativeModel(
-            model_name=self.model_name,
-            system_instruction=get_system_prompt(project_root)
-        )
-
+        # Initialize the client with the API key from environment or config
+        # Note: If GEMINI_API_KEY is in env, genai.Client() picks it up automatically,
+        # but passing it explicitly is safer if load_config() is the source of truth.
+        self.client = genai.Client(api_key=self.api_key)
 
     @retry(
         stop=stop_after_attempt(3),
@@ -58,14 +53,18 @@ class GeminiClient:
         if error_context:
             prompt = f"{user_intent}\n\n**Previous Attempt Failed:**\n{error_context}\n\nPlease revise the plan."
         
-        self.model = self.model.__class__(
-            model_name=self.model_name,
-            system_instruction=get_system_prompt(self.project_root)
-        )
-        
-        response = self.model.generate_content(prompt)
+        # In the new SDK, system instructions are passed via the config object
+        system_instruction = get_system_prompt(self.project_root)
         
         try:
+            response = self.client.models.generate_content(
+                model=self.model_name,
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    system_instruction=system_instruction
+                )
+            )
+
             # Attempt to extract JSON if it's wrapped in markdown code blocks
             text = response.text
             if "```json" in text:
@@ -75,6 +74,7 @@ class GeminiClient:
             
             data = json.loads(text)
             return DispatchStep(**data)
+
         except json.JSONDecodeError as e:
             raise ValueError(f"Failed to parse JSON response: {str(e)}")
         except Exception as e:
@@ -99,11 +99,15 @@ FORMAT REQUIREMENTS:
 
 Keep it concise and actionable.
 """
-        # Use a fresh model instance for this specific task
-        verifier_model = genai.GenerativeModel(
-            model_name=self.model_name,
-            system_instruction="You are a Quality Assurance Engineer generating manual verification protocols."
-        )
-        
-        response = verifier_model.generate_content(prompt)
-        return response.text
+        try:
+            response = self.client.models.generate_content(
+                model=self.model_name,
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    system_instruction="You are a Quality Assurance Engineer generating manual verification protocols."
+                )
+            )
+            return response.text
+        except Exception as e:
+            # Fallback or log if verification step generation fails
+            return f"Error generating verification steps: {str(e)}"

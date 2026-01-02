@@ -13,12 +13,14 @@ def spine():
             "CODER_MODEL": "qwen2.5-coder:7b",
             "REVIEWER_MODEL": "phi3.5:latest"
         }
-        return Spine()
+        # Mock GeminiClient initialization to avoid API key check
+        with patch('core.hub.GeminiClient'):
+            return Spine()
 
-@patch('core.hub.check_resources_threshold')
+@patch('core.hub.wait_for_resources')
 @patch('core.spokes.CoderSpoke.handle_task')
-def test_spine_dispatch_to_coder_success(mock_handle, mock_check, spine):
-    mock_check.return_value = True
+def test_spine_dispatch_to_coder_success(mock_handle, mock_wait, spine):
+    mock_wait.return_value = True
     mock_handle.return_value = AgentResult(status="ok", message="code", artifacts=[])
     
     step = DispatchStep(agent_name="coder", task_description="task", context={})
@@ -26,11 +28,12 @@ def test_spine_dispatch_to_coder_success(mock_handle, mock_check, spine):
     
     assert result.status == "ok"
     assert mock_handle.called
-    assert mock_check.called
+    assert mock_wait.called
 
-@patch('core.hub.check_resources_threshold')
-def test_spine_dispatch_resource_fail(mock_check, spine):
-    mock_check.return_value = False
+@patch('core.hub.wait_for_resources')
+def test_spine_dispatch_resource_fail(mock_wait, spine):
+    # Simulate timeout returning False
+    mock_wait.return_value = False
     
     step = DispatchStep(agent_name="coder", task_description="task", context={})
     
@@ -38,9 +41,9 @@ def test_spine_dispatch_resource_fail(mock_check, spine):
     with pytest.raises(RuntimeError, match="System resources below threshold"):
         spine.dispatch_to_agent(step)
 
-@patch('core.hub.check_resources_threshold')
-def test_spine_dispatch_unknown_agent(mock_check, spine):
-    mock_check.return_value = True
+@patch('core.hub.wait_for_resources')
+def test_spine_dispatch_unknown_agent(mock_wait, spine):
+    mock_wait.return_value = True
     step = DispatchStep(agent_name="unknown", task_description="task", context={})
     
     # ValueError is not typically retried, but let's see how tenacity behaves

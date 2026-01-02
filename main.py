@@ -19,6 +19,21 @@ def main():
         return
 
     if args.queue:
+        # Check for interrupted tasks first
+        running = queue.get_running_tasks()
+        if running:
+            print(f"Found {len(running)} interrupted tasks. Attempting to resume...")
+            for task in running:
+                print(f"\nResuming Task {task['task_id']}: {task['intent']}")
+                try:
+                    result = spine.run_autonomous_loop(task["intent"], existing_task_id=task["task_id"])
+                    queue.update_task_status(task["task_id"], "completed", result.message)
+                    print(f"Task {task['task_id']} completed.")
+                except Exception as e:
+                     queue.update_task_status(task["task_id"], "failed", str(e))
+                     queue.add_attempt(task["task_id"], str(e))
+                     print(f"Task {task['task_id']} failed: {e}")
+
         pending = queue.get_pending_tasks()
         if not pending:
             print("No pending tasks in queue.")
@@ -29,7 +44,7 @@ def main():
             print(f"\nProcessing Task {task['task_id']}: {task['intent']}")
             queue.update_task_status(task["task_id"], "running")
             try:
-                result = spine.run_autonomous_loop(task["intent"])
+                result = spine.run_autonomous_loop(task["intent"], existing_task_id=task["task_id"])
                 queue.update_task_status(task["task_id"], "completed", result.message)
                 print(f"Task {task['task_id']} completed.")
             except Exception as e:
@@ -42,7 +57,7 @@ def main():
         # Automatically track this one-off task in the queue too
         task_id = queue.add_task(args.autonomous, status="running")
         try:
-            result = spine.run_autonomous_loop(args.autonomous)
+            result = spine.run_autonomous_loop(args.autonomous, existing_task_id=task_id)
             queue.update_task_status(task_id, "completed", result.message)
             print(f"Loop finished. Result: {result.message}")
         except Exception as e:
@@ -64,7 +79,7 @@ def main():
                 task_id = queue.add_task(user_input, status="running")
                 
                 try:
-                    result = spine.run_autonomous_loop(user_input)
+                    result = spine.run_autonomous_loop(user_input, existing_task_id=task_id)
                     queue.update_task_status(task_id, "completed", result.message)
                     print(f"Task completed.\nResult: {result.message}")
                 except Exception as e:

@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import patch
+from unittest.mock import patch, ANY
 import sys
 from main import main
 
@@ -24,7 +24,9 @@ def test_main_autonomous(mock_spine_class):
     with patch.object(sys, 'argv', ['main.py', '--autonomous', 'Write code']):
         main()
         
-    mock_spine.run_autonomous_loop.assert_called_once_with('Write code')
+    # main.py now generates a task_id and passes it as existing_task_id
+    # We use ANY for the task_id since it's random
+    mock_spine.run_autonomous_loop.assert_called_once_with('Write code', existing_task_id=ANY)
     mock_spine.run_mock_loop.assert_not_called()
 
 @patch("main.Spine")
