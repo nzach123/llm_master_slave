@@ -1,7 +1,14 @@
 import pytest
 import os
 from pathlib import Path
-from tools.patcher import read_file, write_file, apply_patch
+from tools.patcher import read_file, write_file, apply_patch, PathSecurityError, validate_path
+
+@pytest.fixture(autouse=True)
+def setup_project_root(tmp_path, monkeypatch):
+    """Automatically set project root to tmp_path for all tests."""
+    monkeypatch.setenv("PATCHER_PROJECT_ROOT", str(tmp_path))
+    return tmp_path
+
 
 def test_read_file_success(tmp_path):
     f = tmp_path / "test.txt"
@@ -59,3 +66,24 @@ def test_apply_patch_first_occurrence_only(tmp_path):
     result = apply_patch(str(f), "match", "found")
     assert result is True
     assert f.read_text(encoding="utf-8") == "found match"
+
+def test_path_security_violation(tmp_path):
+    # Try to write outside project root (which is tmp_path)
+    outside_path = tmp_path.parent / "outside_project.txt"
+    
+    with pytest.raises(PathSecurityError):
+        write_file(str(outside_path), "attacker content")
+        
+    with pytest.raises(PathSecurityError):
+        apply_patch(str(outside_path), "search", "replace")
+
+def test_validate_path_absolute_outside_root(tmp_path):
+    # Create a path that is definitely not under tmp_path
+    # On Windows, we can use a different directory under Temp or similar
+    import tempfile
+    with tempfile.TemporaryDirectory() as another_tmp:
+        if Path(another_tmp).resolve() == tmp_path.resolve():
+             # extremely unlikely, but skip if same
+             return
+        with pytest.raises(PathSecurityError):
+            validate_path(another_tmp)

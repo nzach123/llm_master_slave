@@ -13,6 +13,14 @@ GUIDELINES:
 1. Technical Minimalism: Output must be raw and technical. No conversational filler.
 2. Strict JSON: You MUST output only valid JSON matching the provided schema.
 3. No Markdown: Do not wrap the JSON in markdown code blocks unless explicitly told otherwise. (Note: Client will handle extraction if you do, but prefer raw JSON).
+4. Valid Agents: The 'agent_name' field MUST be one of: "coder" or "reviewer". Do NOT invent other names like "spoke_python_coder" or "code_generator".
+
+EXAMPLE OUTPUT:
+{
+  "agent_name": "coder",
+  "task_description": "Create a file utils.py with a function add(a, b) that returns a + b",
+  "context": {}
+}
 
 SCHEMA:
 The response must match the following JSON schema:

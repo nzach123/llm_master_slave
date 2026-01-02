@@ -20,9 +20,11 @@ class GeminiClient:
         if not self.api_key:
             raise ValueError("GEMINI_API_KEY not found in configuration")
             
+        self.model_name = config.get("GEMINI_MODEL", "gemini-1.5-flash")
+        
         genai.configure(api_key=self.api_key)
         self.model = genai.GenerativeModel(
-            model_name="gemini-2.0-flash",
+            model_name=self.model_name,
             system_instruction=get_system_prompt(project_root)
         )
 
@@ -51,6 +53,11 @@ class GeminiClient:
         if error_context:
             prompt = f"{user_intent}\n\n**Previous Attempt Failed:**\n{error_context}\n\nPlease revise the plan."
         
+        self.model = self.model.__class__(
+            model_name=self.model_name,
+            system_instruction=get_system_prompt(self.project_root)
+        )
+        
         response = self.model.generate_content(prompt)
         
         try:
@@ -67,3 +74,31 @@ class GeminiClient:
             raise ValueError(f"Failed to parse JSON response: {str(e)}")
         except Exception as e:
             raise ValueError(f"Failed to validate plan: {str(e)}")
+
+    def generate_verification_steps(self, user_intent: str, task_description: str) -> str:
+        """
+        Generate actionable manual verification steps following the workflow.md format.
+        """
+        prompt = f"""
+Based on the completed task, generate a step-by-step manual verification plan for the user.
+
+USER INTENT: {user_intent}
+TASK COMPLETED: {task_description}
+
+FORMAT REQUIREMENTS:
+- Use the structure from workflow.md.
+- For backend changes, include curl commands or script execution.
+- For frontend changes, include browser navigation and expected visual outcomes.
+- Start with 'The automated tests have passed. For manual verification, please follow these steps:'
+- Use a bold heading '**Manual Verification Steps:**'
+
+Keep it concise and actionable.
+"""
+        # Use a fresh model instance for this specific task
+        verifier_model = genai.GenerativeModel(
+            model_name=self.model_name,
+            system_instruction="You are a Quality Assurance Engineer generating manual verification protocols."
+        )
+        
+        response = verifier_model.generate_content(prompt)
+        return response.text

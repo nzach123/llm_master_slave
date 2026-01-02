@@ -8,8 +8,8 @@ from pathlib import Path
 # Configure logging
 logger = logging.getLogger(__name__)
 
-# Project root for path whitelisting (initialized at module load)
-PROJECT_ROOT = Path(os.getcwd()).resolve()
+# Project root for path whitelisting (can be overridden via environment variable)
+PROJECT_ROOT = Path(os.getenv("PATCHER_PROJECT_ROOT", os.getcwd())).resolve()
 
 
 class PathSecurityError(Exception):
@@ -20,25 +20,17 @@ class PathSecurityError(Exception):
 def validate_path(path: str) -> Path:
     """
     Validates that a path is within the project directory.
-    
-    Args:
-        path: The path to validate
-        
-    Returns:
-        Resolved absolute Path object
-        
-    Raises:
-        PathSecurityError: If the path is outside the project directory
     """
+    project_root = Path(os.getenv("PATCHER_PROJECT_ROOT", os.getcwd())).resolve()
     target_path = Path(path).resolve()
     
-    # Check if the resolved path is within PROJECT_ROOT
+    # Check if the resolved path is within project_root
     try:
-        target_path.relative_to(PROJECT_ROOT)
+        target_path.relative_to(project_root)
     except ValueError:
         error_msg = (
             f"Security violation: Attempted to access path outside project directory. "
-            f"Path: {target_path}, Project Root: {PROJECT_ROOT}"
+            f"Path: {target_path}, Project Root: {project_root}"
         )
         logger.error(error_msg)
         raise PathSecurityError(error_msg)

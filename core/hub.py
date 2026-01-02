@@ -54,68 +54,43 @@ class Spine:
     def _parse_tool_calls(self, text: str) -> List[ToolCall]:
         """
         Parse XML tool calls from LLM output.
-        
-        Uses xml.etree.ElementTree for robust parsing instead of regex.
-        
-        Args:
-            text: Raw LLM output containing XML tags
-            
-        Returns:
-            List of parsed ToolCall objects
+        Uses regex for robust extraction of raw code blocks which might contain unescaped XML chars.
         """
         tool_calls = []
         
         # Extract write_file operations
-        write_pattern = re.compile(r'<write_file[^>]*>(.*?)</write_file>', re.DOTALL)
+        # Pattern: <write_file path="([^"]*)">(.*?)</write_file>
+        write_pattern = re.compile(r'<write_file\s+path=["\']([^"\']*)["\']\s*>(.*?)</write_file>', re.DOTALL)
         for match in write_pattern.finditer(text):
-            try:
-                # Parse the full XML element to get attributes
-                xml_str = match.group(0)
-                root = ET.fromstring(xml_str)
-                path = root.get('path')
-                
-                # Extract full content including text after child elements
-                # This handles cases where LLM inserts comments or other elements
-                content_parts = [root.text or ""]
-                for elem in root:
-                    content_parts.append(elem.tail or "")
-                content = "".join(content_parts)
-                
-                if path:
-                    tool_calls.append(ToolCall(
-                        action="write_file",
-                        path=path,
-                        content=content.strip()
-                    ))
-                    self.logger.info(f"Parsed write_file: {path}")
-            except ET.ParseError as e:
-                self.logger.warning(f"Failed to parse write_file XML: {e}")
-            except Exception as e:
-                self.logger.warning(f"Error parsing write_file: {e}")
+            path = match.group(1)
+            content = match.group(2)
+            if path:
+                tool_calls.append(ToolCall(
+                    action="write_file",
+                    path=path,
+                    content=content.strip()
+                ))
+                self.logger.info(f"Parsed write_file: {path}")
         
         # Extract apply_patch operations
-        patch_pattern = re.compile(r'<apply_patch[^>]*>(.*?)</apply_patch>', re.DOTALL)
+        # Pattern: <apply_patch path="([^"]*)">.*?<old>(.*?)</old>.*?<new>(.*?)</new>.*?</apply_patch>
+        patch_pattern = re.compile(
+            r'<apply_patch\s+path=["\']([^"\']*)["\']\s*>.*?<old>(.*?)</old>.*?<new>(.*?)</new>.*?</apply_patch>',
+            re.DOTALL
+        )
         for match in patch_pattern.finditer(text):
-            try:
-                xml_str = match.group(0)
-                root = ET.fromstring(xml_str)
-                path = root.get('path')
-                
-                old_elem = root.find('old')
-                new_elem = root.find('new')
-                
-                if path and old_elem is not None and new_elem is not None:
-                    tool_calls.append(ToolCall(
-                        action="apply_patch",
-                        path=path,
-                        content=new_elem.text or "",
-                        old_content=old_elem.text or ""
-                    ))
-                    self.logger.info(f"Parsed apply_patch: {path}")
-            except ET.ParseError as e:
-                self.logger.warning(f"Failed to parse apply_patch XML: {e}")
-            except Exception as e:
-                self.logger.error(f"Error parsing apply_patch: {e}")
+            path = match.group(1)
+            old_content = match.group(2)
+            new_content = match.group(3)
+            
+            if path:
+                tool_calls.append(ToolCall(
+                    action="apply_patch",
+                    path=path,
+                    content=new_content, # No strip here to keep exact whitespace if needed, but usually we do
+                    old_content=old_content
+                ))
+                self.logger.info(f"Parsed apply_patch: {path}")
         
         return tool_calls
     
@@ -181,8 +156,12 @@ class Spine:
         self.logger.info(f"Starting autonomous loop for task: {task_id}")
         self.logger.info(f"User Intent: {user_intent}")
 
+        original_branch = "main"
+        task_branch = None
         try:
-            create_checkpoint(task_id)
+            from tools.git_tools import get_current_branch, rollback
+            original_branch = get_current_branch()
+            task_branch = create_checkpoint(task_id)
         except Exception as e:
             self.logger.warning(f"Git checkpoint skipped or failed: {e}")
 
@@ -247,7 +226,13 @@ class Spine:
                         self.logger.info("Retrying with error context...")
                         continue
                     else:
-                        self.logger.error("Max retries reached. Terminating.")
+                        self.logger.error("Max retries reached. Terminating and rolling back.")
+                        try:
+                            from tools.git_tools import rollback
+                            rollback(original_branch, task_branch)
+                        except Exception as re:
+                            self.logger.error(f"Rollback failed: {re}")
+                            
                         return AgentResult(
                             status="error",
                             message=f"Failed after {max_retries} attempts: {error_context}",
@@ -256,6 +241,15 @@ class Spine:
                 else:
                     # Success!
                     self.logger.info(f"Task completed successfully on attempt {attempt}")
+                    
+                    # Generate manual verification steps
+                    try:
+                        verification_steps = self.planner.generate_verification_steps(user_intent, step.task_description)
+                        result.message = f"{result.message}\n\n{verification_steps}"
+                        self.logger.info("Manual verification steps generated.")
+                    except Exception as ve:
+                        self.logger.warning(f"Could not generate verification steps: {ve}")
+                        
                     return result
                     
             except Exception as e:
@@ -266,7 +260,12 @@ class Spine:
                     self.logger.info("Retrying after exception...")
                     continue
                 else:
-                    self.logger.error("Max retries reached after exception.")
+                    self.logger.error("Max retries reached after exception. Rolling back.")
+                    try:
+                        from tools.git_tools import rollback
+                        rollback(original_branch, task_branch)
+                    except Exception as re:
+                        self.logger.error(f"Rollback failed: {re}")
                     raise
         
         # Should not reach here, but safety fallback

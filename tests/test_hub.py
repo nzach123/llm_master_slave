@@ -26,8 +26,10 @@ def test_spine_run_mock_loop(mock_client_class, mock_checkpoint):
 
 @patch("core.hub.GeminiClient")
 @patch("core.hub.create_checkpoint")
-def test_spine_run_autonomous_loop(mock_checkpoint, mock_client_class):
+@patch("tools.git_tools.get_current_branch")
+def test_spine_run_autonomous_loop(mock_get_branch, mock_checkpoint, mock_client_class):
     """Test the autonomous loop uses Planner and dispatches tasks."""
+    mock_get_branch.return_value = "main"
     spine = Spine()
     mock_client = mock_client_class.return_value
     mock_client.generate_plan.return_value = DispatchStep(
@@ -47,8 +49,8 @@ def test_spine_run_autonomous_loop(mock_checkpoint, mock_client_class):
         
         # Verify checkpoint
         mock_checkpoint.assert_called()
-        # Verify planner usage
-        mock_client.generate_plan.assert_called_once_with("User Goal")
+        # Verify planner usage (error_context is None on first try)
+        mock_client.generate_plan.assert_called_once_with("User Goal", None)
         # Verify dispatch
         mock_dispatch.assert_called_once()
 
