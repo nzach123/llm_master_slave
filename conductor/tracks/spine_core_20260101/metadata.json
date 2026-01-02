@@ -1,0 +1,1 @@
+{"track_id": "spine_core_20260101", "type": "feature", "status": "new", "created_at": "2026-01-01T19:50:00Z", "updated_at": "2026-01-01T19:50:00Z", "description": "Build the core Spine Controller and Specs to enable the first Hub-to-Spoke communication loop with Pydantic validation and basic Git checkpointing."}
