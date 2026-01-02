@@ -1,10 +1,13 @@
 import logging
 import uuid
+import os
 from tenacity import retry, stop_after_attempt, wait_fixed
 from core.config import load_config, setup_logging
 from core.specs import DispatchStep, AgentResult
 from core.planner import GeminiClient
+from core.spokes import CoderSpoke, ReviewerSpoke
 from tools.git_tools import create_checkpoint
+from tools.resource_monitor import check_resources_threshold
 
 class Spine:
     def __init__(self):
@@ -12,17 +15,36 @@ class Spine:
         setup_logging()
         self.logger = logging.getLogger(__name__)
         self.logger.info("Spine initialized.")
+        
+        # Initialize Spokes
+        base_url = self.config.get("OLLAMA_BASE_URL")
+        self.coder = CoderSpoke(base_url, self.config.get("CODER_MODEL"))
+        self.reviewer = ReviewerSpoke(base_url, self.config.get("REVIEWER_MODEL"))
+        
         try:
             self.planner = GeminiClient()
         except ValueError as e:
             self.logger.warning(f"Planner initialization failed (API Key missing?): {e}")
             self.planner = None
 
-    @retry(stop=stop_after_attempt(2), wait=wait_fixed(1))
-    def dispatch_to_agent(self, agent_func) -> AgentResult:
-        """Dispatches a step to an agent with retry logic."""
-        self.logger.info("Dispatching task to agent...")
-        return agent_func()
+    @retry(stop=stop_after_attempt(2), wait=wait_fixed(1), reraise=True)
+    def dispatch_to_agent(self, step: DispatchStep) -> AgentResult:
+        """Dispatches a step to a specific Spoke with resource checks."""
+        self.logger.info(f"Dispatching task to agent: {step.agent_name}")
+        
+        # Pre-flight resource check (Hard Fail policy)
+        skip_check = os.getenv("SKIP_RESOURCE_CHECK", "false").lower() == "true"
+        if not skip_check and not check_resources_threshold(min_gb=2.0):
+            error_msg = "System resources below threshold (2GB). Terminating for stability."
+            self.logger.critical(error_msg)
+            raise RuntimeError(error_msg)
+
+        if step.agent_name.lower() == "coder":
+            return self.coder.handle_task(step)
+        elif step.agent_name.lower() == "reviewer":
+            return self.reviewer.handle_task(step)
+        else:
+            raise ValueError(f"Unknown agent: {step.agent_name}")
 
     def run_autonomous_loop(self, user_intent: str) -> AgentResult:
         """
@@ -51,13 +73,7 @@ class Spine:
         step = self.planner.generate_plan(user_intent)
         self.logger.info(f"Plan generated: Agent={step.agent_name}, Task={step.task_description}")
 
-        # 2. Dispatch (Mock for now, as we don't have real agents yet)
-        def agent_action():
-            self.logger.info(f"Agent {step.agent_name} executing: {step.task_description}")
-            # In a real scenario, we'd route to the specific agent here based on step.agent_name
-            return AgentResult(status="ok", message=f"Executed: {step.task_description}", artifacts=[])
-
-        result = self.dispatch_to_agent(agent_action)
+        result = self.dispatch_to_agent(step)
         self.logger.info(f"Task completed with status: {result.status}")
         return result
 
@@ -73,15 +89,11 @@ class Spine:
 
         # Mock DispatchStep
         step = DispatchStep(
-            agent_name="MockAgent",
+            agent_name="coder",
             task_description="Create a hello world file",
             context={}
         )
 
-        def mock_agent_action():
-            self.logger.info(f"Agent executing: {step.task_description}")
-            return AgentResult(status="ok", message="Hello World created", artifacts=["hello.txt"])
-
-        result = self.dispatch_to_agent(mock_agent_action)
+        result = self.dispatch_to_agent(step)
         self.logger.info(f"Task completed with status: {result.status}")
         return result

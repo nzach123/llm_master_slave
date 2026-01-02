@@ -52,16 +52,20 @@ def test_spine_run_autonomous_loop(mock_checkpoint, mock_client_class):
         # Verify dispatch
         mock_dispatch.assert_called_once()
 
+@patch("core.hub.check_resources_threshold")
 @patch("core.hub.GeminiClient")
-def test_spine_retry_logic(mock_client_class):
+def test_spine_retry_logic(mock_client_class, mock_check):
     """Test that dispatch_to_agent retries on failure using tenacity."""
     spine = Spine()
+    mock_check.return_value = True
     
-    mock_agent = MagicMock()
-    # Fail once, then succeed
-    mock_agent.side_effect = [Exception("Fail"), AgentResult(status="ok", message="Success", artifacts=[])]
+    step = DispatchStep(agent_name="coder", task_description="task", context={})
     
-    result = spine.dispatch_to_agent(mock_agent)
-    
-    assert result.status == "ok"
-    assert mock_agent.call_count == 2
+    with patch.object(spine.coder, "handle_task") as mock_handle:
+        # Fail once, then succeed
+        mock_handle.side_effect = [Exception("Fail"), AgentResult(status="ok", message="Success", artifacts=[])]
+        
+        result = spine.dispatch_to_agent(step)
+        
+        assert result.status == "ok"
+        assert mock_handle.call_count == 2
