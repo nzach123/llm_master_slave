@@ -17,5 +17,5 @@
 
 ## Phase 3: Hub Wiring
 - [x] Task: Update `core/hub.py` to use `Planner` instead of mock data. [448c118]
-- [ ] Task: Integration Test - Run `main.py` with a real API key (or recorded mock) to verify the full loop.
+- [x] Task: Integration Test - Run `main.py` with a real API key (or recorded mock) to verify the full loop. [ef3c15a]
 - [ ] Task: Conductor - User Manual Verification 'Hub Wiring' (Protocol in workflow.md)
