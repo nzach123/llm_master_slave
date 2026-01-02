@@ -1,6 +1,6 @@
 # Implementation Plan - Track: Spine Core
 
-## Phase 1: Foundation & Contracts
+## Phase 1: Foundation & Contracts [checkpoint: 4dff992]
 - [x] Task: Create project structure (folders `core`, `tools`, `tests`). [517e308]
 - [x] Task: Create `specs.py` with Pydantic models. [23dde19]
     - [x] Sub-task: Define `DispatchStep` model.
