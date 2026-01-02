@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import MagicMock, patch
 from core.hub import Spine
-from core.specs import DispatchStep, AgentResult
+from core.specs import DispatchStep, AgentResult, SpokeResponse
 
 @patch("core.hub.create_checkpoint")
 @patch("tools.git_tools.get_current_branch")
@@ -17,15 +17,14 @@ def test_autonomous_loop_rollback_on_max_retries(mock_client_class, mock_rollbac
     mock_client.generate_plan.return_value = DispatchStep(
         agent_name="coder",
         task_description="task",
-        context={}
+        context_files=[]
     )
     
     # Mock dispatch to always return a failure (e.g., tool execution failed)
     with patch.object(spine, "dispatch_to_agent") as mock_dispatch:
-        mock_dispatch.return_value = AgentResult(
-            status="ok",
-            message="some tool call which we will mock to fail in execute",
-            artifacts=[]
+        mock_dispatch.return_value = SpokeResponse(
+            thoughts="some tool call which we will mock to fail in execute",
+            tool_calls=[]
         )
         
         # Mock tool execution to always fail

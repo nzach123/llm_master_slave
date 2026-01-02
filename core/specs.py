@@ -4,7 +4,7 @@ from typing import Dict, Any, List, Optional, Literal
 class DispatchStep(BaseModel):
     agent: str = Field(..., alias="agent_name") # Support both for backward compat if needed, or strict per spec
     task: str = Field(..., alias="task_description")
-    context_files: List[str]
+    context_files: List[str] = Field(default_factory=list, alias="context")
 
     class Config:
         populate_by_name = True
@@ -39,12 +39,82 @@ class AgentResult(BaseModel):
     message: str
     artifacts: List[str]
 
+class ProjectOverview(BaseModel):
+    name: Optional[str] = None
+    primary_language: str
+    frameworks: List[str]
+    runtime_targets: List[str]
+    build_system: Optional[str] = None
+
+class EntryPoint(BaseModel):
+    path: str
+    type: Literal["file", "script", "service"]
+    notes: str
+
+class CoreModule(BaseModel):
+    path: str
+    responsibility: str
+    dependencies: List[str]
+
+class StructureMap(BaseModel):
+    entry_points: List[EntryPoint]
+    core_modules: List[CoreModule]
+
+class ExternalInterface(BaseModel):
+    type: Literal["API", "CLI", "file", "network"]
+    description: str
+    location: str
+
+class HardConstraints(BaseModel):
+    language_version: Optional[str] = None
+    framework_versions: Dict[str, str]
+    external_interfaces: List[ExternalInterface]
+    cannot_change: List[str]
+
+class SoftConstraints(BaseModel):
+    coding_patterns: List[str]
+    style_conventions: List[str]
+    existing_abstractions: List[str]
+    tech_debt_notes: List[str]
+
+class MissingContext(BaseModel):
+    description: str
+    blocking: bool
+
+class AmbiguousArea(BaseModel):
+    path: str
+    why_unclear: str
+
+class KnownUnknowns(BaseModel):
+    missing_context: List[MissingContext]
+    ambiguous_areas: List[AmbiguousArea]
+
+class PlannerGuardrails(BaseModel):
+    do_not_assume: List[str]
+    requires_validation: List[Dict[str, str]] # {"decision": "...", "needs": "..."}
+
+class EvidenceIndex(BaseModel):
+    files_examined: List[str]
+    configs_examined: List[str]
+    commands_run: List[str]
+
+class ResearcherOutput(BaseModel):
+    """Strict schema for Researcher Spoke output."""
+    project_overview: ProjectOverview
+    structure_map: StructureMap
+    hard_constraints: HardConstraints
+    soft_constraints: SoftConstraints
+    known_unknowns: KnownUnknowns
+    planner_guardrails: PlannerGuardrails
+    evidence_index: EvidenceIndex
+
 class KnowledgeSummary(BaseModel):
+    # DEPRECATED: Kept for backward compatibility if needed, but ResearcherOutput is preferred
     relevant_files: List[str]
     technical_constraints: List[str]
     missing_information: List[str]
     feasibility_score: float
 
 class FeasibilityCheck(BaseModel):
-    summary: KnowledgeSummary
+    summary: ResearcherOutput
     message: str

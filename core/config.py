@@ -16,7 +16,7 @@ def load_config():
     return {
         "GEMINI_API_KEY": api_key,
         "GEMINI_MODEL": os.getenv("GEMINI_MODEL", "gemini-2.0-flash"),
-        "OLLAMA_BASE_URL": os.getenv("OLLAMA_BASE_URL", "http://localhost:11434/v1"),
+        "OLLAMA_BASE_URL": os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"),
         "CODER_MODEL": os.getenv("CODER_MODEL", "qwen2.5-coder:7b"),
         "REVIEWER_MODEL": os.getenv("REVIEWER_MODEL", "phi3.5:latest"),
     }

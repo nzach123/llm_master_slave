@@ -4,7 +4,7 @@ import json
 from abc import ABC, abstractmethod
 from typing import Type, TypeVar
 from pydantic import BaseModel
-from core.specs import DispatchStep, AgentResult, SpokeResponse, ReviewResult, KnowledgeSummary
+from core.specs import DispatchStep, AgentResult, SpokeResponse, ReviewResult, KnowledgeSummary, ResearcherOutput
 from core.roles import CODER_SYSTEM_PROMPT, REVIEWER_SYSTEM_PROMPT, RESEARCHER_SYSTEM_PROMPT
 
 logger = logging.getLogger(__name__)
@@ -13,7 +13,10 @@ T = TypeVar("T", bound=BaseModel)
 
 class BaseSpoke(ABC):
     def __init__(self, base_url: str, model: str):
-        self.base_url = base_url
+        # Sanitize base_url: strip trailing slashes and /v1 suffix
+        self.base_url = base_url.rstrip("/")
+        if self.base_url.endswith("/v1"):
+            self.base_url = self.base_url[:-3].rstrip("/")
         self.model = model
 
     @abstractmethod
@@ -90,6 +93,14 @@ class ResearcherSpoke(BaseSpoke):
     def get_system_prompt(self) -> str:
         return RESEARCHER_SYSTEM_PROMPT
 
+from core.specs import DispatchStep, AgentResult, SpokeResponse, ReviewResult, ResearcherOutput
+
+# ... (Previous imports remain, ensuring we import ResearcherOutput)
+
+class ResearcherSpoke(BaseSpoke):
+    def get_system_prompt(self) -> str:
+        return RESEARCHER_SYSTEM_PROMPT
+
     @property
-    def response_model(self) -> Type[KnowledgeSummary]:
-        return KnowledgeSummary
+    def response_model(self) -> Type[ResearcherOutput]:
+        return ResearcherOutput

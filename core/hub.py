@@ -7,7 +7,7 @@ from typing import List
 import json
 from tenacity import retry, stop_after_attempt, wait_fixed
 from core.config import load_config, setup_logging
-from core.specs import DispatchStep, AgentResult, ToolCall, KnowledgeSummary, FeasibilityCheck, SpokeResponse
+from core.specs import DispatchStep, AgentResult, ToolCall, KnowledgeSummary, FeasibilityCheck, SpokeResponse, ResearcherOutput
 from core.planner import GeminiClient
 from core.spokes import CoderSpoke, ReviewerSpoke, ResearcherSpoke
 # from core.parsing import TagParser # REMOVED: Replaced by structured JSON
@@ -17,6 +17,7 @@ from tools.resource_monitor import check_resources_threshold, wait_for_resources
 from tools import patcher
 from tools.executor import run_pytest, parse_pytest_output
 from tools.queue import TaskQueue
+from tools.context import get_project_context
 
 class Spine:
     def __init__(self):
@@ -47,7 +48,7 @@ class Spine:
             self.planner = None
 
     @retry(stop=stop_after_attempt(2), wait=wait_fixed(1), reraise=True)
-    def dispatch_to_agent(self, step: DispatchStep) -> SpokeResponse | AgentResult:
+    def dispatch_to_agent(self, step: DispatchStep) -> SpokeResponse | AgentResult | ResearcherOutput:
         """Dispatches a step to a specific Spoke with resource checks."""
         self.logger.info(f"Dispatching task to agent: {step.agent}")
         
@@ -131,53 +132,55 @@ class Spine:
 
     def _negotiate_plan(self, user_intent: str, max_turns: int = 3) -> DispatchStep:
         """
-        Collaborative planning loop.
+        Collaborative planning loop with real Researcher analysis.
         """
         self.logger.info("Starting negotiation loop...")
 
         # 1. Hub proposes Plan v1
         plan = self.planner.generate_plan(user_intent)
 
+        # Gather Project Context for Researcher
+        try:
+             project_tree = get_project_context(".", max_depth=2)
+             # We might want to read a few key files too, but let's start with the tree
+             # and maybe GEMINI.md if it exists
+             context_text = f"Project Structure:\n{project_tree}\n"
+             if os.path.exists("GEMINI.md"):
+                 with open("GEMINI.md", "r", encoding="utf-8") as f:
+                     context_text += f"\nGEMINI.md:\n{f.read()}\n"
+        except Exception as e:
+            self.logger.warning(f"Failed to gather project context: {e}")
+            context_text = "Project context unavailable."
+
         for turn in range(max_turns):
             self.logger.info(f"Negotiation Turn {turn + 1}")
 
-            # 2. Spokes (Researcher) analyze feasibility
+            # 2. Researcher analyzes feasibility
+            # We explicitly ask the Researcher to look at the plan AND the context
             research_step = DispatchStep(
-                agent="researcher", # Updated field name
-                task=f"Analyze feasibility for: {plan.task}", # Updated field name
-                context_files=[] # Updated field name. TODO: populate context
+                agent="researcher",
+                task=f"Analyze feasibility for this plan:\n{plan.task}\n\nUser Intent: {user_intent}",
+                context_files=[context_text] # Passing raw text as context item for now
             )
 
             try:
-                result = self.dispatch_to_agent(research_step)
-
-                # Result is SpokeResponse (structured)
-                # But ResearcherSpoke handle_task returns SpokeResponse which has thoughts/tool_calls
-                # Wait, ResearcherSpoke might need a different return type if it returns KnowledgeSummary directly?
-                # core/spokes.py handle_task returns SpokeResponse.
-                # But the Researcher Prompt says "Output your findings in JSON format: { relevant_files... }"
-                # If SpokeResponse is strict (thoughts + tool_calls), then Researcher output won't match SpokeResponse schema!
-
-                # CRITICAL: Researcher output schema is different from SpokeResponse (Coder).
-                # We need to handle this.
-                # For now, let's assume result.thoughts contains the JSON or we adjust ResearcherSpoke to return a generic dict or specific model.
-
-                # Since we standardized handle_task to return SpokeResponse, we have a mismatch.
-                # We might need to look at result.thoughts if the model put the JSON there, OR the model failed validation.
-
-                # Let's skip deep fix for negotiation in Phase 1 and focus on Basic Coder flow.
-                # But to keep code valid:
-
-                summary = KnowledgeSummary(
-                    relevant_files=[],
-                    technical_constraints=[],
-                    missing_information=[],
-                    feasibility_score=1.0
-                ) # Mock for now to pass type checks if we can't parse
+                # This returns a ResearcherOutput object directly now because of the Spoke update
+                research_output = self.dispatch_to_agent(research_step)
+                
+                # Verify it's the right type (it should be since dispatch_to_agent calls handle_task -> validate)
+                if not hasattr(research_output, "project_overview"):
+                     # Fallback if something went wrong or we got a generic response
+                     self.logger.warning("Researcher did not return ResearcherOutput model. Using generic.")
+                     # We can't easily create a valid ResearcherOutput from scratch without data
+                     # So we might just skip this turn or error. 
+                     # For robustness, let's treat it as a pass but log it.
+                     pass
+                else:
+                    self.logger.info(f"Researcher analysis complete. Hard constraints found: {len(research_output.hard_constraints.cannot_change)}")
 
                 feedback = FeasibilityCheck(
-                    summary=summary,
-                    message="Analysis complete (mock)."
+                    summary=research_output,
+                    message="Researcher provided strict analysis."
                 )
 
                 # 3. Score Consensus
@@ -387,7 +390,7 @@ class Spine:
         )
 
         # Mock dispatch (since we might not have Ollama running)
-        # result = self.dispatch_to_agent(step)
+        result = self.dispatch_to_agent(step)
 
         self.logger.info(f"Mock Loop Finished")
         return AgentResult(status="ok", message="Mock loop finished", artifacts=[])

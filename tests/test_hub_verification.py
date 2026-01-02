@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import MagicMock, patch
 from core.hub import Spine
-from core.specs import DispatchStep, AgentResult
+from core.specs import DispatchStep, AgentResult, SpokeResponse, ToolCall
 
 @patch("core.hub.create_checkpoint")
 @patch("tools.git_tools.get_current_branch")
@@ -22,15 +22,14 @@ def test_autonomous_loop_includes_verification_steps(mock_run_pytest, mock_clien
     mock_client.generate_plan.return_value = DispatchStep(
         agent_name="coder",
         task_description="Implement add function",
-        context={}
+        context_files=[]
     )
     mock_client.generate_verification_steps.return_value = "**Manual Verification Steps:**\n1. Run it."
     
     with patch.object(spine, "dispatch_to_agent") as mock_dispatch:
-        mock_dispatch.return_value = AgentResult(
-            status="ok",
-            message="Code implemented.",
-            artifacts=[]
+        mock_dispatch.return_value = SpokeResponse(
+            thoughts="Code implemented.",
+            tool_calls=[]
         )
         
         # Mock _parse_tool_calls to return nothing so we don't actually hit file system
