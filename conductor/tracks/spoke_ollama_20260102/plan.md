@@ -1,13 +1,13 @@
 # Implementation Plan - Track: Spoke Integration (Ollama)
 
-## Phase 1: Infrastructure & Environment [checkpoint: pending]
+## Phase 1: Infrastructure & Environment [checkpoint: 949262d]
 - [x] Task: Update Configuration. (2181e90)
     - [x] Sub-task: Add `OLLAMA_BASE_URL`, `CODER_MODEL`, and `REVIEWER_MODEL` to `core/config.py`.
     - [x] Sub-task: Update `tests/test_config.py` to verify new settings.
 - [x] Task: Implement Resource Monitoring (`tools/resource_monitor.py`). (ae7d77f)
     - [x] Sub-task: Use `psutil` to implement `get_available_ram()` and `get_available_vram()`.
     - [x] Sub-task: Create `tests/test_resource_monitor.py` to verify threshold logic (mocking `psutil`).
-- [ ] Task: Conductor - User Manual Verification 'Infrastructure' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Infrastructure' (Protocol in workflow.md)
 
 ## Phase 2: Spoke Core & Worker Implementation [checkpoint: pending]
 - [ ] Task: Create `core/spokes.py`.
