@@ -12,9 +12,9 @@
     - [x] Sub-task: Write unit tests for git operations (mocking the actual git binary).
 
 ## Phase 2: The Spine Controller
-- [ ] Task: Implement Logging & Config.
-    - [ ] Sub-task: Setup `python-dotenv` to load `.env`.
-    - [ ] Sub-task: Configure standard logging to `activity.log`.
+- [x] Task: Implement Logging & Config. [b4a5113]
+    - [x] Sub-task: Setup `python-dotenv` to load `.env`.
+    - [x] Sub-task: Configure standard logging to `activity.log`.
 - [ ] Task: Create `core/hub.py` (The Spine).
     - [ ] Sub-task: Implement the `Spine` class initialization.
     - [ ] Sub-task: Implement a `run_mock_loop` method.
