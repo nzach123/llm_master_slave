@@ -6,6 +6,7 @@ def main():
     parser.add_argument("--autonomous", metavar="INTENT", type=str, help="Run autonomous loop with user intent")
     parser.add_argument("--queue", action="store_true", help="Process pending tasks in the queue")
     parser.add_argument("--add-task", metavar="INTENT", type=str, help="Add a task to the queue and exit")
+    parser.add_argument("-i", "--interactive", action="store_true", help="Run in interactive mode")
     args = parser.parse_args()
 
     spine = Spine()
@@ -48,6 +49,32 @@ def main():
             queue.update_task_status(task_id, "failed", str(e))
             print(f"Loop failed: {e}")
             raise
+    elif args.interactive:
+        print("Starting Interactive Mode. Type 'exit' to quit.")
+        while True:
+            try:
+                user_input = input("\n>> Enter task: ").strip()
+                if not user_input:
+                    continue
+                if user_input.lower() in ["exit", "quit"]:
+                    break
+                
+                print(f"Running task: {user_input}")
+                # Track in queue
+                task_id = queue.add_task(user_input, status="running")
+                
+                try:
+                    result = spine.run_autonomous_loop(user_input)
+                    queue.update_task_status(task_id, "completed", result.message)
+                    print(f"Task completed.\nResult: {result.message}")
+                except Exception as e:
+                    queue.update_task_status(task_id, "failed", str(e))
+                    print(f"Task failed: {e}")
+                    
+            except KeyboardInterrupt:
+                print("\nExiting interactive mode...")
+                break
+                
     else:
         print("Starting Spine Mock Loop...")
         result = spine.run_mock_loop()

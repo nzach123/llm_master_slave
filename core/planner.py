@@ -1,4 +1,9 @@
 import json
+import warnings
+
+# Suppress warnings from deprecated google.generativeai
+warnings.simplefilter(action='ignore', category=FutureWarning)
+
 import google.generativeai as genai
 from tenacity import retry, stop_after_attempt, wait_exponential
 from core.config import load_config

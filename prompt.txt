@@ -1,0 +1,23 @@
+# Prompt for Minecraft Clone Project
+
+Dear Gemini,
+
+I am interested in developing a Minecraft clone as a personal project and would appreciate your guidance on how to approach this task. Could you please provide a detailed plan that includes:
+
+1. **Game Engine Selection**: What game engines are suitable for building a Minecraft-like game, and what are the pros and cons of each?
+2. **Programming Languages**: Which programming languages should I consider for developing the game, and why?
+3. **Core Features to Consider**:
+   - World generation
+   - Player movement and interaction with the environment
+   - Block placement and destruction
+   - Inventory system
+   - Multiplayer functionality (if desired)
+4. **Step-by-Step Guide**: Could you outline a high-level roadmap for developing the game, including key milestones and deliverables?
+5. **Best Practices**: What are some best practices to follow when developing a large-scale project like this?
+
+I am looking for a comprehensive guide that will help me plan and execute my Minecraft clone project effectively.
+
+Thank you for your assistance.
+
+Sincerely,
+[Your Name]
