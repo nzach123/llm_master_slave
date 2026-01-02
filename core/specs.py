@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional, Literal
 
 class DispatchStep(BaseModel):
     agent_name: str
@@ -10,3 +10,10 @@ class AgentResult(BaseModel):
     status: str
     message: str
     artifacts: List[str]
+
+class ToolCall(BaseModel):
+    """Represents a parsed tool call from LLM output."""
+    action: Literal["write_file", "apply_patch"]
+    path: str
+    content: str
+    old_content: Optional[str] = None  # Required for apply_patch

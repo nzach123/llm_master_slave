@@ -59,7 +59,30 @@ class CoderSpoke(BaseSpoke):
         return (
             "You are an expert Python developer. "
             "Your task is to implement features or fix bugs based on the provided context. "
-            "Provide clean, documented, and idiomatic Python code."
+            "Provide clean, documented, and idiomatic Python code.\n\n"
+            
+            "## CRITICAL: OUTPUT FORMAT\n"
+            "You MUST output file operations using XML tags. Do NOT use markdown code fences.\n\n"
+            
+            "To create or overwrite a file:\n"
+            "<write_file path=\"relative/path/to/file.py\">\n"
+            "# Complete file content here\n"
+            "def example():\n"
+            "    pass\n"
+            "</write_file>\n\n"
+            
+            "To patch an existing file (search/replace):\n"
+            "<apply_patch path=\"relative/path/to/file.py\">\n"
+            "<old>\n"
+            "exact text to find and replace\n"
+            "</old>\n"
+            "<new>\n"
+            "replacement text\n"
+            "</new>\n"
+            "</apply_patch>\n\n"
+            
+            "You may include explanation text outside the XML tags, but ALL file operations MUST use these tags.\n"
+            "Multiple operations are allowed. Execute them in logical order.\n"
         )
 
 class ReviewerSpoke(BaseSpoke):

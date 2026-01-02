@@ -8,6 +8,43 @@ from pathlib import Path
 # Configure logging
 logger = logging.getLogger(__name__)
 
+# Project root for path whitelisting (initialized at module load)
+PROJECT_ROOT = Path(os.getcwd()).resolve()
+
+
+class PathSecurityError(Exception):
+    """Raised when a file operation attempts to write outside the project directory."""
+    pass
+
+
+def validate_path(path: str) -> Path:
+    """
+    Validates that a path is within the project directory.
+    
+    Args:
+        path: The path to validate
+        
+    Returns:
+        Resolved absolute Path object
+        
+    Raises:
+        PathSecurityError: If the path is outside the project directory
+    """
+    target_path = Path(path).resolve()
+    
+    # Check if the resolved path is within PROJECT_ROOT
+    try:
+        target_path.relative_to(PROJECT_ROOT)
+    except ValueError:
+        error_msg = (
+            f"Security violation: Attempted to access path outside project directory. "
+            f"Path: {target_path}, Project Root: {PROJECT_ROOT}"
+        )
+        logger.error(error_msg)
+        raise PathSecurityError(error_msg)
+    
+    return target_path
+
 def read_file(path: str) -> str:
     """
     Reads a file safely as UTF-8.
@@ -35,12 +72,18 @@ def write_file(path: str, content: str) -> None:
     """
     Writes content to a file atomically.
     Creates parent directories if they do not exist.
+    
+    Security: Only allows writes within the project directory.
 
     Args:
         path: The path to the file to write.
         content: The content to write.
+        
+    Raises:
+        PathSecurityError: If path is outside project directory
     """
-    target_path = Path(path)
+    # Validate path is within project directory
+    target_path = validate_path(path)
     try:
         # Create parent directories
         target_path.parent.mkdir(parents=True, exist_ok=True)
@@ -72,6 +115,8 @@ def apply_patch(path: str, search_block: str, replace_block: str) -> bool:
     Applies a patch to a file by replacing the first occurrence of search_block.
     Idempotent: returns True if replace_block is already present and search_block is missing.
     Returns False if search_block is not found.
+    
+    Security: Only allows patches within the project directory.
 
     Args:
         path: Path to the file.
@@ -80,7 +125,12 @@ def apply_patch(path: str, search_block: str, replace_block: str) -> bool:
 
     Returns:
         bool: True if patched or already patched, False otherwise.
+        
+    Raises:
+        PathSecurityError: If path is outside project directory
     """
+    # Validate path security before reading
+    validate_path(path)
     content = read_file(path)
 
     # Idempotency check
