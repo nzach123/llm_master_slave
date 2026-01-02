@@ -45,11 +45,14 @@
 - **Context:** Workers are stateless/amnesiac. Context must be passed explicitly in DispatchStep.
 - **Safety:** Agents cannot execute arbitrary shell commands; must use defined Tools.
 
-**Implementation Status:**
+- **Implementation Status:**
 - **Phase 1, 2 & 3 Complete:** Core architecture and Hub Integration are complete.
     - **Hub (Planner):** `core/planner.py` uses `google-generativeai` (Gemini 2.0 Flash) to parse user intent into strict JSON plans (`DispatchStep`).
     - **Spine (Controller):** `core/hub.py` now runs an autonomous loop that generates a plan, checkpoints via git, and dispatches tasks.
-- **Next:** Implement the "Patcher" logic for safe file I/O and then the local "Spoke" workers (Ollama integration).
+- **Phase 4 Complete:** Spoke Integration (Ollama) is complete.
+    - **Spokes (Workers):** `core/spokes.py` implements the `Spoke` abstraction for Ollama.
+    - **Resource Guarding:** `tools/resource_monitor.py` implements RAM and VRAM monitoring with a "Hard Fail" policy to ensure system stability.
+- **Next:** Implement the "Patcher" logic for safe file I/O.
 
 # Product Definition
 

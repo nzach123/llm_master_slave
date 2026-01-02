@@ -20,11 +20,11 @@
 ## Spokes (Workers)
 - **Local Runtime:** Ollama
 - **Models:**
-    - `qwen2.5-coder:7b-q4_k_m` (Primary Coder)
-    - `mistral` (Primary Reviewer)
+    - `qwen2.5-coder:7b` (Primary Coder)
+    - `phi3.5:latest` (Primary Reviewer)
 - **Constraint Management:** 
     - Strict sequential task routing.
-    - `psutil` (for system resource monitoring and VRAM guarding before model loads)
+    - `psutil` and `nvidia-smi` (for system resource monitoring and VRAM guarding before model loads)
 
 ## Infrastructure & Tools
 - **Patcher:** Custom Search/Replace logic for idempotent file modifications.
