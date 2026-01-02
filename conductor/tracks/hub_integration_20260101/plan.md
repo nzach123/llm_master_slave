@@ -10,7 +10,7 @@
 - [x] Task: Conductor - User Manual Verification 'The Planner Client' (Protocol in workflow.md) [2def04c]
 
 ## Phase 2: System Prompts & Context
-- [ ] Task: Create `core/prompts.py` to store System Instructions.
+- [x] Task: Create `core/prompts.py` to store System Instructions. [b5e49f9]
     - *Requirement:* Must include "Product Guidelines" (Technical Minimalism).
 - [ ] Task: Integrate `core/specs.py` schema definitions into the System Prompt dynamically.
 - [ ] Task: Conductor - User Manual Verification 'System Prompts & Context' (Protocol in workflow.md)
