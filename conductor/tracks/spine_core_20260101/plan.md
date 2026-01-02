@@ -2,10 +2,10 @@
 
 ## Phase 1: Foundation & Contracts
 - [x] Task: Create project structure (folders `core`, `tools`, `tests`). [517e308]
-- [ ] Task: Create `specs.py` with Pydantic models.
-    - [ ] Sub-task: Define `DispatchStep` model.
-    - [ ] Sub-task: Define `AgentResult` model.
-    - [ ] Sub-task: Write unit tests for schema validation (`tests/test_specs.py`).
+- [x] Task: Create `specs.py` with Pydantic models. [23dde19]
+    - [x] Sub-task: Define `DispatchStep` model.
+    - [x] Sub-task: Define `AgentResult` model.
+    - [x] Sub-task: Write unit tests for schema validation (`tests/test_specs.py`).
 - [ ] Task: Implement Git Safety Net (`tools/git_tools.py`).
     - [ ] Sub-task: Implement `create_checkpoint` using `GitPython`.
     - [ ] Sub-task: Implement `revert_to_main`.
