@@ -4,7 +4,7 @@
 - [x] Task: Create `core/planner.py` skeleton and test file `tests/test_planner.py`. [d3635ac]
 - [x] Task: Implement `GeminiClient` initialization (loading API key). [06f3ac6]
     - *Test:* Verify client fails gracefully without API key.
-- [ ] Task: Implement `generate_plan(user_intent: str) -> DispatchStep`.
+- [x] Task: Implement `generate_plan(user_intent: str) -> DispatchStep`. [1a489f8]
     - *Test:* Mock the network call to verify JSON parsing and Pydantic validation logic handles happy/sad paths.
     - *Constraint:* Must use `pydantic` for schema enforcement.
 - [ ] Task: Conductor - User Manual Verification 'The Planner Client' (Protocol in workflow.md)
