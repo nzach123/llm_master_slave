@@ -1,0 +1,8 @@
+{
+  "ui": {
+    "showMemoryUsage": true,
+    "footer": {
+      "hideContextPercentage": false
+    }
+  }
+}
