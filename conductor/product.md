@@ -46,8 +46,8 @@
 - **Safety:** Agents cannot execute arbitrary shell commands; must use defined Tools.
 
 **Implementation Status:**
-- **Drafting:** Core architecture defined. `specs.py`, `Patcher`, and Agent wrappers are planned but not yet implemented.
-- **Next:** Create `specs.py`, implement Patcher logic, and draft basic CoderAgent w/ Ollama binding.
+- **Phase 1 & 2 Complete:** Core architecture implemented. `specs.py` defined, `git_tools.py` for safety implemented, and basic `Spine` controller loop with retry logic verified.
+- **Next:** Implement Hub (Gemini) integration for real plan generation and Patcher logic.
 
 # Product Definition
 
