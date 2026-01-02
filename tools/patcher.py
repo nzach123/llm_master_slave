@@ -59,3 +59,36 @@ def write_file(path: str, content: str) -> None:
         if 'tmp_path' in locals() and os.path.exists(tmp_path):
             os.remove(tmp_path)
         raise
+
+def apply_patch(path: str, search_block: str, replace_block: str) -> bool:
+    """
+    Applies a patch to a file by replacing the first occurrence of search_block.
+    Idempotent: returns True if replace_block is already present and search_block is missing.
+    Returns False if search_block is not found.
+
+    Args:
+        path: Path to the file.
+        search_block: The exact string to find.
+        replace_block: The string to replace it with.
+
+    Returns:
+        bool: True if patched or already patched, False otherwise.
+    """
+    content = read_file(path)
+
+    # Idempotency check
+    if replace_block in content and search_block not in content:
+        logger.info(f"Patch already applied to {path}")
+        return True
+
+    if search_block not in content:
+        logger.warning(f"Search block not found in {path}")
+        return False
+
+    # Perform replacement (first occurrence only)
+    new_content = content.replace(search_block, replace_block, 1)
+
+    # Write file atomically
+    write_file(path, new_content)
+    logger.info(f"Successfully applied patch to {path}")
+    return True

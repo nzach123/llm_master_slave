@@ -7,9 +7,9 @@
 - [x] Task: Conductor - User Manual Verification 'Core I/O' (Protocol in workflow.md) c237a29
 
 ## Phase 2: Patch Logic
-- [ ] Task: Add tests for `apply_patch` (Idempotency, Not Found, Success)
-- [ ] Task: Implement `apply_patch` logic
-- [ ] Task: Verify Patch Logic with tests
+- [~] Task: Add tests for `apply_patch` (Idempotency, Not Found, Success)
+- [~] Task: Implement `apply_patch` logic
+- [~] Task: Verify Patch Logic with tests
 - [ ] Task: Conductor - User Manual Verification 'Patch Logic' (Protocol in workflow.md)
 
 ## Phase 3: Finalization
