@@ -1,0 +1,9 @@
+pydantic
+pytest
+GitPython
+tenacity
+python-dotenv
+tinydb
+psutil
+httpx
+google-generativeai
