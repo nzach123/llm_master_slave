@@ -7,7 +7,7 @@
 - [x] Task: Implement `generate_plan(user_intent: str) -> DispatchStep`. [1a489f8]
     - *Test:* Mock the network call to verify JSON parsing and Pydantic validation logic handles happy/sad paths.
     - *Constraint:* Must use `pydantic` for schema enforcement.
-- [ ] Task: Conductor - User Manual Verification 'The Planner Client' (Protocol in workflow.md)
+- [~] Task: Conductor - User Manual Verification 'The Planner Client' (Protocol in workflow.md)
 
 ## Phase 2: System Prompts & Context
 - [ ] Task: Create `core/prompts.py` to store System Instructions.
