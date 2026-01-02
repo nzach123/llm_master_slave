@@ -25,6 +25,6 @@
     - [x] Sub-task: Verify that `dispatch_to_agent` correctly routes to Spokes and handles resource failures.
 - [x] Task: Conductor - User Manual Verification 'Integration' (Protocol in workflow.md)
 
-## Phase 4: Final Verification [checkpoint: pending]
-- [ ] Task: Run full test suite (`pytest`).
-- [ ] Task: Conductor - User Manual Verification 'Final Verification' (Protocol in workflow.md)
+## Phase 4: Final Verification [checkpoint: a3e387d]
+- [x] Task: Run full test suite (`pytest`). (a3e387d)
+- [x] Task: Conductor - User Manual Verification 'Final Verification' (Protocol in workflow.md)
