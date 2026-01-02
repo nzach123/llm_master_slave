@@ -11,7 +11,7 @@
     - [x] Sub-task: Implement `revert_to_main`.
     - [x] Sub-task: Write unit tests for git operations (mocking the actual git binary).
 
-## Phase 2: The Spine Controller
+## Phase 2: The Spine Controller [checkpoint: a5f2670]
 - [x] Task: Implement Logging & Config. [b4a5113]
     - [x] Sub-task: Setup `python-dotenv` to load `.env`.
     - [x] Sub-task: Configure standard logging to `activity.log`.
