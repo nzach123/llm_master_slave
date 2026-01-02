@@ -46,8 +46,10 @@
 - **Safety:** Agents cannot execute arbitrary shell commands; must use defined Tools.
 
 **Implementation Status:**
-- **Phase 1 & 2 Complete:** Core architecture implemented. `specs.py` defined, `git_tools.py` for safety implemented, and basic `Spine` controller loop with retry logic verified.
-- **Next:** Implement Hub (Gemini) integration for real plan generation and Patcher logic.
+- **Phase 1, 2 & 3 Complete:** Core architecture and Hub Integration are complete.
+    - **Hub (Planner):** `core/planner.py` uses `google-generativeai` (Gemini 2.0 Flash) to parse user intent into strict JSON plans (`DispatchStep`).
+    - **Spine (Controller):** `core/hub.py` now runs an autonomous loop that generates a plan, checkpoints via git, and dispatches tasks.
+- **Next:** Implement the "Patcher" logic for safe file I/O and then the local "Spoke" workers (Ollama integration).
 
 # Product Definition
 
