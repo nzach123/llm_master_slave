@@ -18,11 +18,11 @@
 - [x] Task: Conductor - User Manual Verification 'Spoke Implementation' (Protocol in workflow.md)
 
 ## Phase 3: Hub & Spine Integration [checkpoint: pending]
-- [ ] Task: Update `core/hub.py` (Spine class).
-    - [ ] Sub-task: Initialize Spokes and implement routing in `dispatch_to_agent`.
-    - [ ] Sub-task: Implement pre-flight resource checks with Hard Fail policy.
-- [ ] Task: Create `tests/test_hub_ollama.py`.
-    - [ ] Sub-task: Verify that `dispatch_to_agent` correctly routes to Spokes and handles resource failures.
+- [x] Task: Update `core/hub.py` (Spine class). (2a7d801)
+    - [x] Sub-task: Initialize Spokes and implement routing in `dispatch_to_agent`.
+    - [x] Sub-task: Implement pre-flight resource checks with Hard Fail policy.
+- [x] Task: Create `tests/test_hub_ollama.py`. (2a7d801)
+    - [x] Sub-task: Verify that `dispatch_to_agent` correctly routes to Spokes and handles resource failures.
 - [ ] Task: Conductor - User Manual Verification 'Integration' (Protocol in workflow.md)
 
 ## Phase 4: Final Verification [checkpoint: pending]
