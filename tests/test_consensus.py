@@ -7,7 +7,8 @@ from core.consensus import ConsensusScorer
 class TestConsensusLoop(unittest.TestCase):
     def setUp(self):
         # Mock dependencies
-        self.mock_planner = MagicMock()
+        self.mock_tactician = MagicMock()
+        self.mock_architect = MagicMock()
         self.mock_scorer = ConsensusScorer()
 
         # Patch Spine to avoid real initializations
@@ -16,12 +17,14 @@ class TestConsensusLoop(unittest.TestCase):
              patch('core.hub.CoderSpoke'), \
              patch('core.hub.ReviewerSpoke'), \
              patch('core.hub.ResearcherSpoke'), \
-             patch('core.hub.GeminiClient', return_value=self.mock_planner), \
+             patch('core.hub.Tactician', return_value=self.mock_tactician), \
+             patch('core.hub.Architect', return_value=self.mock_architect), \
              patch('core.hub.TaskQueue'):
 
             self.spine = Spine()
             # Inject our mock planner explicitly just in case
-            self.spine.planner = self.mock_planner
+            self.spine.tactician = self.mock_tactician
+            self.spine.architect = self.mock_architect
             self.spine.scorer = self.mock_scorer
 
     def test_negotiation_loop_success(self):
@@ -33,7 +36,7 @@ class TestConsensusLoop(unittest.TestCase):
             task_description="Build a spaceship",
             context_files=[]
         )
-        self.mock_planner.generate_plan.return_value = initial_plan
+        self.mock_tactician.generate_plan.return_value = initial_plan
 
         # 2. Researcher Feedback (Good)
         summary = KnowledgeSummary(
@@ -66,29 +69,33 @@ class TestConsensusLoop(unittest.TestCase):
             task_description="Build a spaceship",
             context_files=[]
         )
-        self.mock_planner.generate_plan.return_value = initial_plan
+        self.mock_tactician.generate_plan.return_value = initial_plan
 
         # 2. Researcher Feedback (Bad then Good)
-        bad_summary = KnowledgeSummary(
-            relevant_files=[],
-            technical_constraints=["No fuel"],
-            missing_information=[],
-            feasibility_score=0.4
-        )
-        good_summary = KnowledgeSummary(
-            relevant_files=[],
-            technical_constraints=[],
-            missing_information=[],
-            feasibility_score=0.95
-        )
+        # Note: Hub expects ResearcherOutput now, not KnowledgeSummary.
+        # But for mocking simplicity, we need to ensure the mock object behaves like ResearcherOutput.
 
-        mock_result_bad = MagicMock()
-        mock_result_bad.thoughts = bad_summary.model_dump_json()
+        # We need to construct a valid ResearcherOutput model, but it's complex.
+        # Instead, we will mock the return value of dispatch_to_agent to be a ResearcherOutput object directly.
 
-        mock_result_good = MagicMock()
-        mock_result_good.thoughts = good_summary.model_dump_json()
+        from core.specs import ResearcherOutput, ProjectOverview, StructureMap, HardConstraints, SoftConstraints, KnownUnknowns, PlannerGuardrails, EvidenceIndex
 
-        self.spine.dispatch_to_agent = MagicMock(side_effect=[mock_result_bad, mock_result_good])
+        # Helper to create dummy output
+        def create_output(files, constraints):
+            return ResearcherOutput(
+                project_overview=ProjectOverview(primary_language="python", frameworks=[], runtime_targets=[]),
+                structure_map=StructureMap(entry_points=[], core_modules=[]),
+                hard_constraints=HardConstraints(framework_versions={}, external_interfaces=[], cannot_change=constraints),
+                soft_constraints=SoftConstraints(coding_patterns=[], style_conventions=[], existing_abstractions=[], tech_debt_notes=[]),
+                known_unknowns=KnownUnknowns(missing_context=[], ambiguous_areas=[]),
+                planner_guardrails=PlannerGuardrails(do_not_assume=[], requires_validation=[]),
+                evidence_index=EvidenceIndex(files_examined=files, configs_examined=[], commands_run=[])
+            )
+
+        output_bad = create_output([], ["No fuel"])
+        output_good = create_output([], [])
+
+        self.spine.dispatch_to_agent = MagicMock(side_effect=[output_bad, output_good])
 
         # Mock Refinement
         refined_plan = DispatchStep(
@@ -96,7 +103,7 @@ class TestConsensusLoop(unittest.TestCase):
             task_description="Build a glider instead",
             context_files=[]
         )
-        self.mock_planner.refine_plan.return_value = refined_plan
+        self.mock_tactician.refine_plan.return_value = refined_plan
 
         # Execute
         final_plan = self.spine._negotiate_plan("Build a spaceship")
@@ -104,7 +111,7 @@ class TestConsensusLoop(unittest.TestCase):
         # Verify
         self.assertEqual(final_plan.task, "Build a glider instead")
         self.assertEqual(self.spine.dispatch_to_agent.call_count, 2)
-        self.mock_planner.refine_plan.assert_called_once()
+        self.mock_tactician.refine_plan.assert_called_once()
 
 if __name__ == '__main__':
     unittest.main()

@@ -15,6 +15,7 @@ def main():
     parser = argparse.ArgumentParser(description="Conductor Spine Controller")
     parser.add_argument("--autonomous", metavar="INTENT", type=str, help="Run autonomous loop with user intent")
     parser.add_argument("--queue", action="store_true", help="Process pending tasks in the queue")
+    parser.add_argument("--project", action="store_true", help="Run the full Project Loop (Macro/Micro)")
     parser.add_argument("--add-task", metavar="INTENT", type=str, help="Add a task to the queue and exit")
     parser.add_argument("-i", "--interactive", action="store_true", help="Run in interactive mode")
     args = parser.parse_args()
@@ -28,7 +29,11 @@ def main():
         print(f"Task added to queue: {task_id}")
         return
 
-    if args.queue:
+    if args.project:
+        print("Starting Project Loop (Macro/Micro)...")
+        spine.run_project_loop()
+
+    elif args.queue:
         # Check for interrupted tasks first
         running = queue.get_running_tasks()
         if running:

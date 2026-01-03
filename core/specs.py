@@ -1,6 +1,13 @@
 from pydantic import BaseModel, Field
 from typing import Dict, Any, List, Optional, Literal
 
+class ProjectBundle(BaseModel):
+    project_name: str
+    high_level_intent: str
+    acceptance_criteria: List[str]
+    constraints: Dict[str, List[str]]
+    risk_notes: str
+
 class DispatchStep(BaseModel):
     agent: str = Field(..., alias="agent_name") # Support both for backward compat if needed, or strict per spec
     task: str = Field(..., alias="task_description")

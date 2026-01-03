@@ -7,10 +7,11 @@ from core.config import load_config
 from core.specs import DispatchStep, FeasibilityCheck
 from core.prompts import get_system_prompt
 
-class GeminiClient:
+class Tactician:
     def __init__(self, project_root: str = "."):
         """
-        Initialize the Gemini Planner client.
+        Initialize the Tactician (formerly Planner).
+        It focuses on converting high-level tasks into executable DispatchSteps.
         
         Args:
             project_root: Root directory of the project for context gathering
@@ -84,9 +85,12 @@ class GeminiClient:
         """
         Refines a plan based on feedback from the Researcher/Spoke.
         """
+        # Access attributes by their field name, not alias, for internal logic if object is already instantiated
+        # Note: 'context_files' is the field name, but 'context' is the alias.
+        # Inside the class, we should use the field name.
         prompt = f"""
-        Original Task: {original_plan.task_description}
-        Original Context: {original_plan.context}
+        Original Task: {original_plan.task}
+        Original Context: {original_plan.context_files}
 
         Researcher Feedback:
         - Relevant Files: {feedback.summary.relevant_files}
