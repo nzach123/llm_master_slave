@@ -17,10 +17,10 @@ def create_checkpoint(task_id: str) -> str:
     
     # We allow dirty state ONLY if we are already on the correct task branch (resuming mid-work)
     # But for safety, let's enforce clean state before switching/creating.
-    if repo.is_dirty(untracked_files=True):
+    if repo.is_dirty(untracked_files=False):
         # Exception: if we are already on the target branch, maybe we don't care?
         # But safest is to require clean start.
-        raise Exception("Working directory is not clean. Please commit or stash changes before starting/resuming autonomous loop.")
+        raise Exception("Working directory is not clean. Please commit changes before starting/resuming autonomous loop.")
         
     branch_name = f"task/{task_id}"
 

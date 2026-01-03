@@ -14,7 +14,7 @@ T = TypeVar("T", bound=BaseModel)
 class BaseSpoke(ABC):
     def __init__(self, base_url: str, model: str):
         # Sanitize base_url: strip trailing slashes and /v1 suffix
-        self.base_url = base_url.rstrip("/")
+        self.base_url = base_url.rstrip("/") if base_url else ""
         if self.base_url.endswith("/v1"):
             self.base_url = self.base_url[:-3].rstrip("/")
         self.model = model

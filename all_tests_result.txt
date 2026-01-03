@@ -1,0 +1,578 @@
+﻿============================= test session starts =============================
+platform win32 -- Python 3.11.14, pytest-9.0.2, pluggy-1.6.0
+rootdir: C:\00_Repos\llm_master_slave
+configfile: pytest.ini
+plugins: anyio-4.12.0, asyncio-1.3.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=function, asyncio_default_test_loop_scope=function
+collected 67 items
+
+tests\test_config.py .F.                                                 [  4%]
+tests\test_consensus.py FF                                               [  7%]
+tests\test_e2e_autonomous.py sssss                                       [ 14%]
+tests\test_fuzzy_patcher.py ....                                         [ 20%]
+tests\test_git_tools.py ....                                             [ 26%]
+tests\test_hub.py ...                                                    [ 31%]
+tests\test_hub_rollback.py FF                                            [ 34%]
+tests\test_hub_verification.py F                                         [ 35%]
+tests\test_integration.py F                                              [ 37%]
+tests\test_integration_cli.py ...                                        [ 41%]
+tests\test_patcher.py ...........                                        [ 58%]
+tests\test_planner.py ....                                               [ 64%]
+tests\test_prompts.py ..                                                 [ 67%]
+tests\test_queue.py ....                                                 [ 73%]
+tests\test_researcher_live.py .                                          [ 74%]
+tests\test_researcher_real.py F                                          [ 76%]
+tests\test_resource_monitor.py ......                                    [ 85%]
+tests\test_specs.py ....                                                 [ 91%]
+tests\test_spokes.py ......                                              [100%]
+
+================================== FAILURES ===================================
+__________________________ test_load_config_defaults __________________________
+
+tmp_path = WindowsPath('C:/Users/Nick/AppData/Local/Temp/pytest-of-Nick/pytest-68/test_load_config_defaults0')
+
+    def test_load_config_defaults(tmp_path):
+        """Test loading configuration with default values."""
+        # Clear environment variables
+        if "OLLAMA_BASE_URL" in os.environ: del os.environ["OLLAMA_BASE_URL"]
+        if "CODER_MODEL" in os.environ: del os.environ["CODER_MODEL"]
+        if "REVIEWER_MODEL" in os.environ: del os.environ["REVIEWER_MODEL"]
+    
+        config = load_config()
+>       assert config["OLLAMA_BASE_URL"] == "http://localhost:11434"
+E       AssertionError: assert 'http://localhost:11434/v1' == 'http://localhost:11434'
+E         
+E         - http://localhost:11434
+E         + http://localhost:11434/v1
+E         ?                       +++
+
+tests\test_config.py:27: AssertionError
+_____________ TestConsensusLoop.test_negotiation_loop_refinement ______________
+
+self = <tests.test_consensus.TestConsensusLoop testMethod=test_negotiation_loop_refinement>
+
+    def setUp(self):
+        # Mock dependencies
+        self.mock_planner = MagicMock()
+        self.mock_scorer = ConsensusScorer()
+    
+        # Patch Spine to avoid real initializations
+        with patch('core.hub.load_config', return_value={}), \
+             patch('core.hub.setup_logging'), \
+             patch('core.hub.CoderSpoke'), \
+             patch('core.hub.ReviewerSpoke'), \
+             patch('core.hub.ResearcherSpoke'), \
+             patch('core.hub.Troubleshooter'), \
+             patch('core.hub.GeminiClient', return_value=self.mock_planner), \
+             patch('core.hub.TaskQueue'):
+    
+>           self.spine = Spine()
+                         ^^^^^^^
+
+tests\test_consensus.py:23: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+core\hub.py:38: in __init__
+    self.judge = JudgeSpoke(base_url, self.config.get("JUDGE_MODEL"))
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <core.judge.JudgeSpoke object at 0x0000024794A0FF90>, base_url = None
+model = None
+
+    def __init__(self, base_url: str, model: str):
+        # Sanitize base_url: strip trailing slashes and /v1 suffix
+>       self.base_url = base_url.rstrip("/")
+                        ^^^^^^^^^^^^^^^
+E       AttributeError: 'NoneType' object has no attribute 'rstrip'
+
+core\spokes.py:17: AttributeError
+---------------------------- Captured stderr call -----------------------------
+2026-01-03 15:53:37,582 [INFO] Spine initialized.
+------------------------------ Captured log call ------------------------------
+INFO     core.hub:hub.py:31 Spine initialized.
+_______________ TestConsensusLoop.test_negotiation_loop_success _______________
+
+self = <tests.test_consensus.TestConsensusLoop testMethod=test_negotiation_loop_success>
+
+    def setUp(self):
+        # Mock dependencies
+        self.mock_planner = MagicMock()
+        self.mock_scorer = ConsensusScorer()
+    
+        # Patch Spine to avoid real initializations
+        with patch('core.hub.load_config', return_value={}), \
+             patch('core.hub.setup_logging'), \
+             patch('core.hub.CoderSpoke'), \
+             patch('core.hub.ReviewerSpoke'), \
+             patch('core.hub.ResearcherSpoke'), \
+             patch('core.hub.Troubleshooter'), \
+             patch('core.hub.GeminiClient', return_value=self.mock_planner), \
+             patch('core.hub.TaskQueue'):
+    
+>           self.spine = Spine()
+                         ^^^^^^^
+
+tests\test_consensus.py:23: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+core\hub.py:38: in __init__
+    self.judge = JudgeSpoke(base_url, self.config.get("JUDGE_MODEL"))
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <core.judge.JudgeSpoke object at 0x00000247949F6310>, base_url = None
+model = None
+
+    def __init__(self, base_url: str, model: str):
+        # Sanitize base_url: strip trailing slashes and /v1 suffix
+>       self.base_url = base_url.rstrip("/")
+                        ^^^^^^^^^^^^^^^
+E       AttributeError: 'NoneType' object has no attribute 'rstrip'
+
+core\spokes.py:17: AttributeError
+---------------------------- Captured stderr call -----------------------------
+2026-01-03 15:53:37,660 [INFO] Spine initialized.
+------------------------------ Captured log call ------------------------------
+INFO     core.hub:hub.py:31 Spine initialized.
+________________ test_autonomous_loop_rollback_on_max_retries _________________
+
+mock_client_class = <MagicMock name='GeminiClient' id='2506461434704'>
+mock_rollback = <MagicMock name='rollback' id='2506461339024'>
+mock_get_branch = <MagicMock name='get_current_branch' id='2506461344336'>
+mock_checkpoint = <MagicMock name='create_checkpoint' id='2506461251472'>
+
+    @patch("core.hub.create_checkpoint")
+    @patch("tools.git_tools.get_current_branch")
+    @patch("tools.git_tools.rollback")
+    @patch("core.hub.GeminiClient")
+    def test_autonomous_loop_rollback_on_max_retries(mock_client_class, mock_rollback, mock_get_branch, mock_checkpoint):
+        """Test that rollback is called when max retries are reached."""
+        mock_get_branch.return_value = "main"
+        mock_checkpoint.return_value = "task/abc"
+    
+        spine = Spine()
+        mock_client = mock_client_class.return_value
+        mock_client.generate_plan.return_value = DispatchStep(
+            agent_name="coder",
+            task_description="task",
+            context_files=[]
+        )
+    
+        # Mock dispatch to always return a failure (e.g., tool execution failed)
+        with patch.object(spine, "dispatch_to_agent") as mock_dispatch:
+            mock_dispatch.return_value = SpokeResponse(
+                thoughts="some tool call which we will mock to fail in execute",
+                tool_calls=[]
+            )
+    
+            # Mock tool execution to always fail
+            with patch.object(spine, "_execute_tool_calls") as mock_execute:
+                mock_execute.return_value = {"success": [], "failed": ["Disk full"]}
+    
+                # Mock parse_tool_calls to return something so execute is called
+                with patch.object(spine, "_parse_tool_calls") as mock_parse:
+                    from core.specs import ToolCall
+                    mock_parse.return_value = [ToolCall(action="write_file", path="test.py", content="content")]
+    
+                    result = spine.run_autonomous_loop("Fail Me", max_retries=2)
+    
+>                   assert result.status == "error"
+                           ^^^^^^^^^^^^^
+E                   AttributeError: 'coroutine' object has no attribute 'status'
+
+tests\test_hub_rollback.py:41: AttributeError
+---------------------------- Captured stderr call -----------------------------
+2026-01-03 15:53:38,741 [INFO] Spine initialized.
+_________________ test_autonomous_loop_rollback_on_exception __________________
+
+mock_client_class = <MagicMock name='GeminiClient' id='2506461331600'>
+mock_rollback = <MagicMock name='rollback' id='2506461221200'>
+mock_get_branch = <MagicMock name='get_current_branch' id='2506461227664'>
+mock_checkpoint = <MagicMock name='create_checkpoint' id='2506461221136'>
+
+    @patch("core.hub.create_checkpoint")
+    @patch("tools.git_tools.get_current_branch")
+    @patch("tools.git_tools.rollback")
+    @patch("core.hub.GeminiClient")
+    def test_autonomous_loop_rollback_on_exception(mock_client_class, mock_rollback, mock_get_branch, mock_checkpoint):
+        """Test that rollback is called when a fatal exception occurs after retries."""
+        mock_get_branch.return_value = "main"
+        mock_checkpoint.return_value = "task/abc"
+    
+        spine = Spine()
+        mock_client = mock_client_class.return_value
+    
+        # Mock generate_plan to raise exception
+        mock_client.generate_plan.side_effect = Exception("System Crash")
+    
+>       with pytest.raises(Exception) as excinfo:
+E       Failed: DID NOT RAISE <class 'Exception'>
+
+tests\test_hub_rollback.py:62: Failed
+---------------------------- Captured stderr call -----------------------------
+2026-01-03 15:53:38,748 [INFO] Spine initialized.
+______________ test_autonomous_loop_includes_verification_steps _______________
+
+mock_run_pytest = <MagicMock name='run_pytest' id='2506461645648'>
+mock_client_class = <MagicMock name='GeminiClient' id='2506461645840'>
+mock_get_branch = <MagicMock name='get_current_branch' id='2506461726480'>
+mock_checkpoint = <MagicMock name='create_checkpoint' id='2506461726544'>
+
+    @patch("core.hub.create_checkpoint")
+    @patch("tools.git_tools.get_current_branch")
+    @patch("core.hub.GeminiClient")
+    @patch("core.hub.run_pytest")
+    def test_autonomous_loop_includes_verification_steps(mock_run_pytest, mock_client_class, mock_get_branch, mock_checkpoint):
+        """Test that manual verification steps are appended to the result message."""
+        mock_get_branch.return_value = "main"
+        mock_checkpoint.return_value = "task/abc"
+    
+        # Mock successful test run
+        mock_test_result = MagicMock()
+        mock_test_result.success = True
+        mock_run_pytest.return_value = mock_test_result
+    
+        spine = Spine()
+        mock_client = mock_client_class.return_value
+        mock_client.generate_plan.return_value = DispatchStep(
+            agent_name="coder",
+            task_description="Implement add function",
+            context_files=[]
+        )
+        mock_client.generate_verification_steps.return_value = "**Manual Verification Steps:**\n1. Run it."
+    
+        with patch.object(spine, "dispatch_to_agent") as mock_dispatch:
+            mock_dispatch.return_value = SpokeResponse(
+                thoughts="Code implemented.",
+                tool_calls=[]
+            )
+    
+            # Mock _parse_tool_calls to return nothing so we don't actually hit file system
+            # Actually, we need success in execution_results to trigger tests and success
+            with patch.object(spine, "_parse_tool_calls") as mock_parse:
+                mock_parse.return_value = [] # But we need success
+    
+                # Since _parse_tool_calls is empty, execution_results["success"] will be empty.
+                # I need to mock execution_results directly or make it succeed.
+                with patch.object(spine, "_execute_tool_calls") as mock_execute:
+                     mock_execute.return_value = {"success": ["Modified file"], "failed": []}
+    
+                     result = spine.run_autonomous_loop("Add function", max_retries=1)
+    
+>                    assert result.status == "ok"
+                            ^^^^^^^^^^^^^
+E                    AttributeError: 'coroutine' object has no attribute 'status'
+
+tests\test_hub_verification.py:47: AttributeError
+---------------------------- Captured stderr call -----------------------------
+2026-01-03 15:53:38,755 [INFO] Spine initialized.
+_____________________________ test_full_mock_run ______________________________
+
+tmp_path = WindowsPath('C:/Users/Nick/AppData/Local/Temp/pytest-of-Nick/pytest-68/test_full_mock_run0')
+
+    def test_full_mock_run(tmp_path):
+        """Integration test running main.py in a fresh git repo."""
+        # Setup fresh git repo in tmp_path
+        repo_dir = tmp_path / "repo"
+        repo_dir.mkdir()
+    
+        # Initialize repo
+        subprocess.run(["git", "init"], cwd=repo_dir)
+        subprocess.run(["git", "config", "user.email", "test@example.com"], cwd=repo_dir)
+        subprocess.run(["git", "config", "user.name", "Test User"], cwd=repo_dir)
+    
+        # Copy necessary files to repo_dir, excluding __pycache__
+        def ignore_pycache(path, names):
+            return [n for n in names if n == '__pycache__']
+    
+        shutil.copytree("core", repo_dir / "core", ignore=ignore_pycache)
+        shutil.copytree("tools", repo_dir / "tools", ignore=ignore_pycache)
+        shutil.copy("main.py", repo_dir / "main.py")
+    
+        # Create initial commit with .gitignore
+        (repo_dir / "README.md").write_text("initial")
+        (repo_dir / ".gitignore").write_text("activity.log\n__pycache__/\n")
+        # Pre-create activity.log
+        (repo_dir / "activity.log").write_text("")
+        subprocess.run(["git", "add", "."], cwd=repo_dir)
+        subprocess.run(["git", "commit", "-m", "initial commit"], cwd=repo_dir)
+        subprocess.run(["git", "branch", "-M", "master"], cwd=repo_dir)
+    
+        # Create a mock_spokes_patch.py to override real spoke behavior during integration test
+        (repo_dir / "mock_spokes_patch.py").write_text("""
+    import core.spokes
+    import tools.git_tools
+    from unittest.mock import MagicMock
+    from core.specs import AgentResult
+    
+    # Mock the handle_task method globally
+    core.spokes.CoderSpoke.handle_task = MagicMock(return_value=AgentResult(status='ok', message='Mocked Response', artifacts=[]))
+    core.spokes.ReviewerSpoke.handle_task = MagicMock(return_value=AgentResult(status='ok', message='Approve', artifacts=[]))
+    
+    # Mock git tools to avoid dirty repo or branch issues in tests
+    tools.git_tools.create_checkpoint = MagicMock()
+    """)
+    
+        # Update main.py to import the patch
+        main_content = (repo_dir / "main.py").read_text()
+        (repo_dir / "main.py").write_text("import mock_spokes_patch\n" + main_content)
+    
+        # Mock resource check to pass in integration tests
+        env = os.environ.copy()
+        env["PYTHONPATH"] = str(repo_dir)
+        env["SKIP_RESOURCE_CHECK"] = "true"
+        # Ensure GEMINI_API_KEY is present for Planner init (though mock loop doesn't use it, initialization does)
+        env["GEMINI_API_KEY"] = "test_key"
+    
+        # Use the current python executable
+        python_exe = sys.executable
+    
+        process = subprocess.Popen(
+            [python_exe, "main.py"],
+            cwd=repo_dir,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            env=env
+        )
+        stdout, stderr = process.communicate()
+    
+        # Debug print on failure
+        if process.returncode != 0:
+            print(f"STDOUT: {stdout}")
+            print(f"STDERR: {stderr}")
+    
+>       assert process.returncode == 0
+E       AssertionError: assert 1 == 0
+E        +  where 1 = <Popen: returncode: 1 args: ['C:\\00_Repos\\llm_master_slave\\.venv\\Scripts...>.returncode
+
+tests\test_integration.py:79: AssertionError
+---------------------------- Captured stdout call -----------------------------
+Initialized empty Git repository in C:/Users/Nick/AppData/Local/Temp/pytest-of-Nick/pytest-68/test_full_mock_run0/repo/.git/
+[master (root-commit) 6ec7d1f] initial commit
+ 25 files changed, 2439 insertions(+)
+ create mode 100644 .gitignore
+ create mode 100644 README.md
+ create mode 100644 core/__init__.py
+ create mode 100644 core/config.py
+ create mode 100644 core/consensus.py
+ create mode 100644 core/hub.py
+ create mode 100644 core/judge.py
+ create mode 100644 core/planner.py
+ create mode 100644 core/prompts.py
+ create mode 100644 core/roles.py
+ create mode 100644 core/specs.py
+ create mode 100644 core/spokes.py
+ create mode 100644 core/troubleshooter.py
+ create mode 100644 main.py
+ create mode 100644 tools/__init__.py
+ create mode 100644 tools/analyzer.py
+ create mode 100644 tools/cli_utils.py
+ create mode 100644 tools/context.py
+ create mode 100644 tools/executor.py
+ create mode 100644 tools/fuzzy_match.py
+ create mode 100644 tools/git_tools.py
+ create mode 100644 tools/logger.py
+ create mode 100644 tools/patcher.py
+ create mode 100644 tools/queue.py
+ create mode 100644 tools/resource_monitor.py
+STDOUT: Created directory: docs/
+Created directory: src/
+Created directory: artifacts/
+Starting Spine Mock Loop...
+INFO: Dispatching task to coder
+INFO: Dispatching task to coder
+
+STDERR: 2026-01-03 15:53:40,600 [INFO] Spine initialized.
+2026-01-03 15:53:40,661 [INFO] Starting mock loop for task: mock_task_001
+2026-01-03 15:53:40,661 [INFO] Dispatching task to agent: coder
+2026-01-03 15:53:41,671 [INFO] Dispatching task to agent: coder
+Traceback (most recent call last):
+  File "C:\Users\Nick\AppData\Local\Temp\pytest-of-Nick\pytest-68\test_full_mock_run0\repo\core\hub.py", line 78, in dispatch_to_agent
+    return await self.coder.handle_task(step)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: object AgentResult can't be used in 'await' expression
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\Nick\AppData\Local\Temp\pytest-of-Nick\pytest-68\test_full_mock_run0\repo\main.py", line 112, in <module>
+    asyncio.run(main())
+  File "C:\Users\Nick\AppData\Roaming\uv\python\cpython-3.11.14-windows-x86_64-none\Lib\asyncio\runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Nick\AppData\Roaming\uv\python\cpython-3.11.14-windows-x86_64-none\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Nick\AppData\Roaming\uv\python\cpython-3.11.14-windows-x86_64-none\Lib\asyncio\base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "C:\Users\Nick\AppData\Local\Temp\pytest-of-Nick\pytest-68\test_full_mock_run0\repo\main.py", line 108, in main
+    result = await spine.run_mock_loop()
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Nick\AppData\Local\Temp\pytest-of-Nick\pytest-68\test_full_mock_run0\repo\core\hub.py", line 517, in run_mock_loop
+    result = await self.dispatch_to_agent(step)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\00_Repos\llm_master_slave\.venv\Lib\site-packages\tenacity\asyncio\__init__.py", line 189, in async_wrapped
+    return await copy(fn, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\00_Repos\llm_master_slave\.venv\Lib\site-packages\tenacity\asyncio\__init__.py", line 111, in __call__
+    do = await self.iter(retry_state=retry_state)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\00_Repos\llm_master_slave\.venv\Lib\site-packages\tenacity\asyncio\__init__.py", line 153, in iter
+    result = await action(retry_state)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\00_Repos\llm_master_slave\.venv\Lib\site-packages\tenacity\_utils.py", line 99, in inner
+    return call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\00_Repos\llm_master_slave\.venv\Lib\site-packages\tenacity\__init__.py", line 420, in exc_check
+    raise retry_exc.reraise()
+          ^^^^^^^^^^^^^^^^^^^
+  File "C:\00_Repos\llm_master_slave\.venv\Lib\site-packages\tenacity\__init__.py", line 187, in reraise
+    raise self.last_attempt.result()
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Nick\AppData\Roaming\uv\python\cpython-3.11.14-windows-x86_64-none\Lib\concurrent\futures\_base.py", line 449, in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Nick\AppData\Roaming\uv\python\cpython-3.11.14-windows-x86_64-none\Lib\concurrent\futures\_base.py", line 401, in __get_result
+    raise self._exception
+  File "C:\00_Repos\llm_master_slave\.venv\Lib\site-packages\tenacity\asyncio\__init__.py", line 114, in __call__
+    result = await fn(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Nick\AppData\Local\Temp\pytest-of-Nick\pytest-68\test_full_mock_run0\repo\core\hub.py", line 76, in dispatch_to_agent
+    with rich_logger.log_status(f"Agent {step.agent} working..."):
+  File "C:\00_Repos\llm_master_slave\.venv\Lib\site-packages\rich\live.py", line 189, in __exit__
+    self.stop()
+  File "C:\00_Repos\llm_master_slave\.venv\Lib\site-packages\rich\live.py", line 162, in stop
+    with self.console:
+  File "C:\00_Repos\llm_master_slave\.venv\Lib\site-packages\rich\console.py", line 870, in __exit__
+    self._exit_buffer()
+  File "C:\00_Repos\llm_master_slave\.venv\Lib\site-packages\rich\console.py", line 826, in _exit_buffer
+    self._check_buffer()
+  File "C:\00_Repos\llm_master_slave\.venv\Lib\site-packages\rich\console.py", line 2038, in _check_buffer
+    self._write_buffer()
+  File "C:\00_Repos\llm_master_slave\.venv\Lib\site-packages\rich\console.py", line 2074, in _write_buffer
+    legacy_windows_render(buffer, LegacyWindowsTerm(self.file))
+  File "C:\00_Repos\llm_master_slave\.venv\Lib\site-packages\rich\_windows_renderer.py", line 19, in legacy_windows_render
+    term.write_text(text)
+  File "C:\00_Repos\llm_master_slave\.venv\Lib\site-packages\rich\_win32_console.py", line 402, in write_text
+    self.write(text)
+  File "C:\00_Repos\llm_master_slave\.venv\Lib\site-packages\colorama\ansitowin32.py", line 47, in write
+    self.__convertor.write(text)
+  File "C:\00_Repos\llm_master_slave\.venv\Lib\site-packages\colorama\ansitowin32.py", line 177, in write
+    self.write_and_convert(text)
+  File "C:\00_Repos\llm_master_slave\.venv\Lib\site-packages\colorama\ansitowin32.py", line 205, in write_and_convert
+    self.write_plain_text(text, cursor, len(text))
+  File "C:\00_Repos\llm_master_slave\.venv\Lib\site-packages\colorama\ansitowin32.py", line 210, in write_plain_text
+    self.wrapped.write(text[start:end])
+  File "C:\Users\Nick\AppData\Roaming\uv\python\cpython-3.11.14-windows-x86_64-none\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\u280b' in position 0: character maps to <undefined>
+
+_______________ TestResearcherNegotiation.test_negotiation_flow _______________
+
+self = <tests.test_researcher_real.TestResearcherNegotiation testMethod=test_negotiation_flow>
+mock_planner_cls = <MagicMock name='GeminiClient' id='2506462620688'>
+mock_logging = <MagicMock name='setup_logging' id='2506462806608'>
+mock_config = <MagicMock name='load_config' id='2506462811792'>
+mock_exists = <MagicMock name='exists' id='2506462817680'>
+mock_get_context = <MagicMock name='get_project_context' id='2506462822928'>
+
+    @patch("core.hub.get_project_context")
+    @patch("core.hub.os.path.exists")
+    @patch("core.hub.load_config")
+    @patch("core.hub.setup_logging")
+    @patch("core.hub.GeminiClient")
+    def test_negotiation_flow(self, mock_planner_cls, mock_logging, mock_config, mock_exists, mock_get_context):
+        # Setup mocks
+        mock_config.return_value = {"OLLAMA_BASE_URL": "http://mock", "CODER_MODEL": "mock", "REVIEWER_MODEL": "mock"}
+    
+        # Mock Planner instance
+        mock_planner = MagicMock()
+        mock_planner_cls.return_value = mock_planner
+        mock_get_context.return_value = "\u251c\u2500\u2500 file1.py\\n\u2514\u2500\u2500 file2.py"
+        mock_exists.return_value = False # Don't try to read GEMINI.md relevant here
+    
+        spine = Spine()
+        # spine.planner is now the mock instance returned by mock_planner_cls
+        spine.planner.generate_plan.return_value = DispatchStep(agent="coder", task="Do something")
+        spine.scorer = MagicMock()
+        spine.scorer.evaluate.return_value = 0.9 # High score to exit loop
+    
+        # Mock the dispatch_to_agent to return a valid ResearcherOutput
+        mock_output = ResearcherOutput(
+            project_overview=ProjectOverview(
+                primary_language="Python",
+                frameworks=["Flask"],
+                runtime_targets=["Windows"],
+                name="TestProject"
+            ),
+            structure_map=StructureMap(entry_points=[], core_modules=[]),
+            hard_constraints=HardConstraints(framework_versions={}, external_interfaces=[], cannot_change=[]),
+            soft_constraints=SoftConstraints(coding_patterns=[], style_conventions=[], existing_abstractions=[], tech_debt_notes=[]),
+            known_unknowns=KnownUnknowns(missing_context=[], ambiguous_areas=[]),
+            planner_guardrails=PlannerGuardrails(do_not_assume=[], requires_validation=[]),
+            evidence_index=EvidenceIndex(files_examined=[], configs_examined=[], commands_run=[])
+        )
+    
+        spine.dispatch_to_agent = MagicMock(return_value=mock_output)
+    
+        # Execute
+        plan = spine._negotiate_plan("User intent")
+    
+        # Verify
+>       spine.dispatch_to_agent.assert_called()
+
+tests\test_researcher_real.py:52: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <MagicMock id='2506461511568'>
+
+    def assert_called(self):
+        """assert that the mock was called at least once
+        """
+        if self.call_count == 0:
+            msg = ("Expected '%s' to have been called." %
+                   (self._mock_name or 'mock'))
+>           raise AssertionError(msg)
+E           AssertionError: Expected 'mock' to have been called.
+
+C:\Users\Nick\AppData\Roaming\uv\python\cpython-3.11.14-windows-x86_64-none\Lib\unittest\mock.py:908: AssertionError
+---------------------------- Captured stderr call -----------------------------
+2026-01-03 15:53:46,293 [INFO] Spine initialized.
+------------------------------ Captured log call ------------------------------
+INFO     core.hub:hub.py:31 Spine initialized.
+============================== warnings summary ===============================
+core\specs.py:4
+  C:\00_Repos\llm_master_slave\core\specs.py:4: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    class DispatchStep(BaseModel):
+
+tests/test_hub_rollback.py::test_autonomous_loop_rollback_on_exception
+  C:\00_Repos\llm_master_slave\tests\test_hub_rollback.py:63: RuntimeWarning: coroutine 'Spine.run_autonomous_loop' was never awaited
+    spine.run_autonomous_loop("Crash Me", max_retries=1)
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_hub_verification.py::test_autonomous_loop_includes_verification_steps
+  C:\00_Repos\llm_master_slave\.venv\Lib\site-packages\_pytest\_code\code.py:368: RuntimeWarning: coroutine 'Spine.run_autonomous_loop' was never awaited
+    yield TracebackEntry(cur_)
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_researcher_live.py::test_live_researcher
+  C:\00_Repos\llm_master_slave\.venv\Lib\site-packages\_pytest\python.py:166: RuntimeWarning: coroutine 'Spine.dispatch_to_agent' was never awaited
+    result = testfunction(**testargs)
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+FAILED tests/test_config.py::test_load_config_defaults - AssertionError: asse...
+FAILED tests/test_consensus.py::TestConsensusLoop::test_negotiation_loop_refinement
+FAILED tests/test_consensus.py::TestConsensusLoop::test_negotiation_loop_success
+FAILED tests/test_hub_rollback.py::test_autonomous_loop_rollback_on_max_retries
+FAILED tests/test_hub_rollback.py::test_autonomous_loop_rollback_on_exception
+FAILED tests/test_hub_verification.py::test_autonomous_loop_includes_verification_steps
+FAILED tests/test_integration.py::test_full_mock_run - AssertionError: assert...
+FAILED tests/test_researcher_real.py::TestResearcherNegotiation::test_negotiation_flow
+============ 8 failed, 54 passed, 5 skipped, 4 warnings in 11.21s =============

@@ -21,7 +21,12 @@ class RichLogger:
         self.console.print(Panel(tree, title="Execution Plan", expand=False))
 
     def log_status(self, message: str, spinner_name: str = "dots"):
-        """Returns a Live context manager with a spinner."""
+        """Returns a Live context manager with a spinner. Disables spinner if not in a terminal."""
+        if not self.console.is_terminal:
+             # Just print the message once and return a no-op context manager
+             self.log_info(message)
+             from contextlib import nullcontext
+             return nullcontext()
         return Live(Spinner(spinner_name, text=message), refresh_per_second=10)
 
     def log_info(self, message: str):

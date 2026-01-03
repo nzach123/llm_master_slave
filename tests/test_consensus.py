@@ -1,107 +1,118 @@
-import unittest
-from unittest.mock import MagicMock, patch
+import pytest
+from unittest.mock import MagicMock, patch, AsyncMock
 from core.hub import Spine
-from core.specs import DispatchStep, ResearcherOutput, FeasibilityCheck
-from core.consensus import ConsensusScorer
+from core.specs import DispatchStep, ResearcherOutput, FeasibilityCheck, ProjectOverview, StructureMap, HardConstraints, SoftConstraints, KnownUnknowns, PlannerGuardrails, EvidenceIndex
+from core.judge import JudgeResult
 
-class TestConsensusLoop(unittest.TestCase):
-    def setUp(self):
-        # Mock dependencies
-        self.mock_planner = MagicMock()
-        self.mock_scorer = ConsensusScorer()
+@pytest.mark.asyncio
+async def test_negotiation_loop_success():
+    """Test that negotiation stops when consensus is reached."""
+    # Mock dependencies
+    mock_planner = MagicMock()
+    
+    # Patch Spine to avoid real initializations
+    with patch('core.hub.load_config', return_value={}), \
+         patch('core.hub.setup_logging'), \
+         patch('core.hub.CoderSpoke'), \
+         patch('core.hub.ReviewerSpoke'), \
+         patch('core.hub.ResearcherSpoke'), \
+         patch('core.hub.Troubleshooter'), \
+         patch('core.hub.GeminiClient', return_value=mock_planner), \
+         patch('core.hub.TaskQueue'):
 
-        # Patch Spine to avoid real initializations
-        with patch('core.hub.load_config', return_value={}), \
-             patch('core.hub.setup_logging'), \
-             patch('core.hub.CoderSpoke'), \
-             patch('core.hub.ReviewerSpoke'), \
-             patch('core.hub.ResearcherSpoke'), \
-             patch('core.hub.Troubleshooter'), \
-             patch('core.hub.GeminiClient', return_value=self.mock_planner), \
-             patch('core.hub.TaskQueue'):
-
-            self.spine = Spine()
-            # Inject our mock planner explicitly just in case
-            self.spine.planner = self.mock_planner
-            self.spine.scorer = self.mock_scorer
-
-    def _get_mock_researcher_output(self):
-        # We don't actually use score inside ResearcherOutput,
-        # the ConsensusScorer evaluates the output against the plan.
-        # So we just return a valid structure.
-        return ResearcherOutput(
-            project_overview={
-                "name": "Test", "primary_language": "Python", "frameworks": [],
-                "runtime_targets": [], "build_system": None
-            },
-            structure_map={"entry_points": [], "core_modules": []},
-            hard_constraints={"framework_versions": {}, "external_interfaces": [], "cannot_change": []},
-            soft_constraints={"coding_patterns": [], "style_conventions": [], "existing_abstractions": [], "tech_debt_notes": []},
-            known_unknowns={"missing_context": [], "ambiguous_areas": []},
-            planner_guardrails={"do_not_assume": [], "requires_validation": []},
-            evidence_index={"files_examined": [], "configs_examined": [], "commands_run": []}
-        )
-
-    def test_negotiation_loop_success(self):
-        """Test that negotiation stops when consensus is reached."""
+        spine = Spine()
+        spine.planner = mock_planner
 
         # 1. Initial Plan
         initial_plan = DispatchStep(
-            agent_name="coder",
-            task_description="Build a spaceship",
+            agent="coder",
+            task="Build a spaceship",
             context_files=[]
         )
-        self.mock_planner.generate_plan.return_value = initial_plan
+        mock_planner.generate_plan.return_value = initial_plan
 
         # 2. Researcher Feedback
-        # The dispatch_to_agent now returns a ResearcherOutput object directly
-        researcher_output = self._get_mock_researcher_output()
-        self.spine.dispatch_to_agent = MagicMock(return_value=researcher_output)
+        mock_researcher_output = ResearcherOutput(
+            project_overview=ProjectOverview(name="test", primary_language="py", frameworks=[], runtime_targets=[], build_system=""),
+            structure_map=StructureMap(entry_points=[], core_modules=[]),
+            hard_constraints=HardConstraints(language_version="", framework_versions={}, external_interfaces=[], cannot_change=[]),
+            soft_constraints=SoftConstraints(coding_patterns=[], style_conventions=[], existing_abstractions=[], tech_debt_notes=[]),
+            known_unknowns=KnownUnknowns(missing_context=[], ambiguous_areas=[]),
+            planner_guardrails=PlannerGuardrails(do_not_assume=[], requires_validation=[]),
+            evidence_index=EvidenceIndex(files_examined=[], configs_examined=[], commands_run=[])
+        )
 
-        # Mock Consensus Scorer to return high score
-        self.spine.scorer.evaluate = MagicMock(return_value=0.9)
+        with patch.object(spine, "dispatch_to_agent", new_callable=AsyncMock) as mock_dispatch:
+            mock_dispatch.side_effect = [
+                mock_researcher_output,
+                JudgeResult(score=0.9, reasoning="good", decision="APPROVE")
+            ]
 
-        # Execute
-        final_plan = self.spine._negotiate_plan("Build a spaceship")
+            # Execute
+            final_plan = await spine._negotiate_plan("Build a spaceship")
 
-        # Verify
-        self.assertEqual(final_plan.task, "Build a spaceship")
-        # Should only run 1 turn because score is high
-        self.assertEqual(self.spine.dispatch_to_agent.call_count, 1)
+            # Verify
+            assert final_plan.task == "Build a spaceship"
+            # Should run researcher (1) + judge (1) = 2 calls
+            assert mock_dispatch.call_count == 2
 
-    def test_negotiation_loop_refinement(self):
-        """Test that negotiation refines plan when score is low."""
+@pytest.mark.asyncio
+async def test_negotiation_loop_refinement():
+    """Test that negotiation refines plan when score is low."""
+    mock_planner = MagicMock()
+    
+    with patch('core.hub.load_config', return_value={}), \
+         patch('core.hub.setup_logging'), \
+         patch('core.hub.CoderSpoke'), \
+         patch('core.hub.ReviewerSpoke'), \
+         patch('core.hub.ResearcherSpoke'), \
+         patch('core.hub.Troubleshooter'), \
+         patch('core.hub.GeminiClient', return_value=mock_planner), \
+         patch('core.hub.TaskQueue'):
+
+        spine = Spine()
+        spine.planner = mock_planner
 
         # 1. Initial Plan
         initial_plan = DispatchStep(
-            agent_name="coder",
-            task_description="Build a spaceship",
+            agent="coder",
+            task="Build a spaceship",
             context_files=[]
         )
-        self.mock_planner.generate_plan.return_value = initial_plan
+        mock_planner.generate_plan.return_value = initial_plan
 
         # 2. Researcher Feedback
-        researcher_output = self._get_mock_researcher_output()
-        self.spine.dispatch_to_agent = MagicMock(return_value=researcher_output)
-
-        # Mock Consensus Scorer to return LOW then HIGH
-        self.spine.scorer.evaluate = MagicMock(side_effect=[0.4, 0.9])
+        mock_researcher_output = ResearcherOutput(
+            project_overview=ProjectOverview(name="test", primary_language="py", frameworks=[], runtime_targets=[], build_system=""),
+            structure_map=StructureMap(entry_points=[], core_modules=[]),
+            hard_constraints=HardConstraints(language_version="", framework_versions={}, external_interfaces=[], cannot_change=[]),
+            soft_constraints=SoftConstraints(coding_patterns=[], style_conventions=[], existing_abstractions=[], tech_debt_notes=[]),
+            known_unknowns=KnownUnknowns(missing_context=[], ambiguous_areas=[]),
+            planner_guardrails=PlannerGuardrails(do_not_assume=[], requires_validation=[]),
+            evidence_index=EvidenceIndex(files_examined=[], configs_examined=[], commands_run=[])
+        )
 
         # Mock Refinement
         refined_plan = DispatchStep(
-            agent_name="coder",
-            task_description="Build a glider instead",
+            agent="coder",
+            task="Build a glider instead",
             context_files=[]
         )
-        self.mock_planner.refine_plan.return_value = refined_plan
+        mock_planner.refine_plan.return_value = refined_plan
 
-        # Execute
-        final_plan = self.spine._negotiate_plan("Build a spaceship")
+        with patch.object(spine, "dispatch_to_agent", new_callable=AsyncMock) as mock_dispatch:
+            mock_dispatch.side_effect = [
+                mock_researcher_output, # Turn 1 Researcher
+                JudgeResult(score=0.4, reasoning="too complex", decision="REJECT"), # Turn 1 Judge
+                mock_researcher_output, # Turn 2 Researcher
+                JudgeResult(score=0.9, reasoning="better", decision="APPROVE") # Turn 2 Judge
+            ]
 
-        # Verify
-        self.assertEqual(final_plan.task, "Build a glider instead")
-        self.assertEqual(self.spine.dispatch_to_agent.call_count, 2)
-        self.mock_planner.refine_plan.assert_called_once()
+            # Execute
+            final_plan = await spine._negotiate_plan("Build a spaceship")
 
-if __name__ == '__main__':
-    unittest.main()
+            # Verify
+            assert final_plan.task == "Build a glider instead"
+            # researcher + judge + researcher + judge = 4 calls
+            assert mock_dispatch.call_count == 4
+            mock_planner.refine_plan.assert_called_once()

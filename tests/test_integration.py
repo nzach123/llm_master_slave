@@ -35,13 +35,16 @@ def test_full_mock_run(tmp_path):
     # Create a mock_spokes_patch.py to override real spoke behavior during integration test
     (repo_dir / "mock_spokes_patch.py").write_text("""
 import core.spokes
+import core.judge
 import tools.git_tools
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, AsyncMock
 from core.specs import AgentResult
 
-# Mock the handle_task method globally
-core.spokes.CoderSpoke.handle_task = MagicMock(return_value=AgentResult(status='ok', message='Mocked Response', artifacts=[]))
-core.spokes.ReviewerSpoke.handle_task = MagicMock(return_value=AgentResult(status='ok', message='Approve', artifacts=[]))
+# Mock the handle_task method globally with AsyncMock
+core.spokes.CoderSpoke.handle_task = AsyncMock(return_value=AgentResult(status='ok', message='Mocked Response', artifacts=[]))
+core.spokes.ReviewerSpoke.handle_task = AsyncMock(return_value=AgentResult(status='ok', message='Approve', artifacts=[]))
+core.spokes.ResearcherSpoke.handle_task = AsyncMock(return_value=AgentResult(status='ok', message='Researched', artifacts=[]))
+core.judge.JudgeSpoke.handle_task = AsyncMock(return_value=MagicMock(score=0.9, reasoning="good", decision="APPROVE"))
 
 # Mock git tools to avoid dirty repo or branch issues in tests
 tools.git_tools.create_checkpoint = MagicMock()
@@ -81,5 +84,3 @@ tools.git_tools.create_checkpoint = MagicMock()
     # Verify activity.log in repo_dir
     log_file = repo_dir / "activity.log"
     assert log_file.exists()
-    
-    # Note: Branch assertion removed as create_checkpoint is now mocked in the subprocess
