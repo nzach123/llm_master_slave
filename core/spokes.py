@@ -6,6 +6,7 @@ from typing import Type, TypeVar
 from pydantic import BaseModel
 from core.specs import DispatchStep, AgentResult, SpokeResponse, ReviewResult, KnowledgeSummary, ResearcherOutput
 from core.roles import CODER_SYSTEM_PROMPT, REVIEWER_SYSTEM_PROMPT, RESEARCHER_SYSTEM_PROMPT, TROUBLESHOOTER_SYSTEM_PROMPT
+from core.validation import ValidationGate, SchemaValidationError
 
 logger = logging.getLogger(__name__)
 
@@ -18,6 +19,8 @@ class BaseSpoke(ABC):
         if self.base_url.endswith("/v1"):
             self.base_url = self.base_url[:-3].rstrip("/")
         self.model = model
+        # Initialize ValidationGate for explicit schema validation (ISSUE-002 fix)
+        self.validator = ValidationGate()
 
     @abstractmethod
     def get_system_prompt(self) -> str:
@@ -66,12 +69,22 @@ class BaseSpoke(ABC):
             
             content = data["message"]["content"]
 
-            # Parse and Validate using the specific model for this spoke
+            # Parse and Validate using ValidationGate for explicit error surfacing
+            # This replaces direct Pydantic validation to ensure errors are captured properly
+            context = f"{self.__class__.__name__}.handle_task"
+            
             try:
-                return self.response_model.model_validate_json(content)
-            except Exception as e:
-                logger.error(f"Failed to parse JSON response for {self.__class__.__name__}: {content}")
-                raise e
+                return self.validator.require_valid_json(
+                    content, 
+                    self.response_model, 
+                    context=context
+                )
+            except SchemaValidationError as e:
+                logger.error(
+                    f"Schema validation FAILED for {context}: {len(e.errors)} errors. "
+                    f"Raw content (truncated): {content[:500]}"
+                )
+                raise
 
 class CoderSpoke(BaseSpoke):
     def get_system_prompt(self) -> str:

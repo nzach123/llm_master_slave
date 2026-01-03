@@ -85,8 +85,8 @@ class GeminiClient:
         Refines a plan based on feedback from the Researcher/Spoke.
         """
         prompt = f"""
-        Original Task: {original_plan.task_description}
-        Original Context: {original_plan.context}
+        Original Task: {original_plan.task}
+        Original Context: {original_plan.context_files}
 
         Researcher Feedback:
         - Hard Constraints: {feedback.summary.hard_constraints}

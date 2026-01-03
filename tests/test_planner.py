@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import patch, MagicMock
 from core.planner import GeminiClient
-from core.specs import DispatchStep
+from core.specs import DispatchStep, FeasibilityCheck, ResearcherOutput, StructureMap, HardConstraints, SoftConstraints, KnownUnknowns, PlannerGuardrails, EvidenceIndex, ProjectOverview
 import json
 
 def test_gemini_client_initialization_success():
@@ -55,7 +55,7 @@ def test_generate_plan_success():
 def test_generate_plan_invalid_json():
     """Test failure when API returns invalid JSON."""
     with patch("core.planner.load_config") as mock_load:
-         with patch("google.genai.Client") as mock_client_cls:
+        with patch("google.genai.Client") as mock_client_cls:
             mock_load.return_value = {"GEMINI_API_KEY": "test_key"}
 
             mock_client_instance = MagicMock()
@@ -68,3 +68,51 @@ def test_generate_plan_invalid_json():
             client = GeminiClient()
             with pytest.raises(ValueError, match="Failed to parse JSON response"):
                 client.generate_plan("intent")
+
+def test_refine_plan_success():
+    """Test successful plan refinement."""
+    with patch("core.planner.load_config") as mock_load:
+        with patch("google.genai.Client") as mock_client_cls:
+            mock_load.return_value = {"GEMINI_API_KEY": "test_key"}
+            mock_client_instance = MagicMock()
+            mock_client_cls.return_value = mock_client_instance
+
+            # Setup original plan
+            original_plan = DispatchStep(
+                agent_name="coder",
+                task_description="Old Task",
+                context=["old.py"]
+            )
+
+            # Setup feedback
+            feedback = FeasibilityCheck(
+                summary=ResearcherOutput(
+                     project_overview=ProjectOverview(
+                        primary_language="python",
+                        frameworks=[],
+                        runtime_targets=[]
+                     ),
+                    structure_map=StructureMap(entry_points=[], core_modules=[]),
+                    hard_constraints=HardConstraints(framework_versions={}, external_interfaces=[], cannot_change=[]),
+                    soft_constraints=SoftConstraints(coding_patterns=[], style_conventions=[], existing_abstractions=[], tech_debt_notes=[]),
+                    known_unknowns=KnownUnknowns(missing_context=[], ambiguous_areas=[]),
+                    planner_guardrails=PlannerGuardrails(do_not_assume=[], requires_validation=[]),
+                    evidence_index=EvidenceIndex(files_examined=[], configs_examined=[], commands_run=[])
+                ),
+                message="Please fix it."
+            )
+
+            # Setup LLM response for refinement
+            mock_response = MagicMock()
+            mock_response.text = json.dumps({
+                "agent_name": "coder",
+                "task_description": "New Refined Task",
+                "context": ["old.py", "new.py"]
+            })
+            mock_client_instance.models.generate_content.return_value = mock_response
+
+            client = GeminiClient()
+            refined_plan = client.refine_plan(original_plan, feedback)
+
+            assert refined_plan.task == "New Refined Task"
+            assert refined_plan.context_files == ["old.py", "new.py"]

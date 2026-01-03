@@ -15,6 +15,7 @@ from core.judge import JudgeSpoke
 from core.troubleshooter import Troubleshooter
 # from core.parsing import TagParser # REMOVED: Replaced by structured JSON
 from core.consensus import ConsensusScorer
+from core.conflict_resolver import ConflictResolver, ConflictResolutionStrategy
 from tools.git_tools import create_checkpoint
 from tools.resource_monitor import check_resources_threshold, wait_for_resources
 from tools import patcher
@@ -46,6 +47,9 @@ class Spine:
 
         # Initialize Consensus Scorer
         # self.scorer = ConsensusScorer() # REPLACED by Judge
+        
+        # Initialize Conflict Resolver for multi-worker scenarios (ISSUE-001 fix)
+        self.conflict_resolver = ConflictResolver(ConflictResolutionStrategy.MAJORITY_VOTE)
 
         # Resource Mutex
         self.resource_lock = asyncio.Lock()

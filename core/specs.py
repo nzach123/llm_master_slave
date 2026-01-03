@@ -18,10 +18,19 @@ class ToolCall(BaseModel):
     replace: Optional[str] = None # replace block for apply_patch
     command: Optional[str] = None # command for run_command
 
+class ClassificationJustification(BaseModel):
+    """Justification for a classification decision (for traceability)."""
+    item: str
+    classification: str
+    reason: str
+    confidence: Optional[float] = None
+
+
 class SpokeResponse(BaseModel):
     """The strict JSON output expected from a Coder/Spoke."""
     thoughts: str
     tool_calls: List[ToolCall]
+    justifications: Optional[List[ClassificationJustification]] = None
 
 class ReviewResult(BaseModel):
     """Output from the Reviewer agent."""
