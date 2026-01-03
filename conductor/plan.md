@@ -35,18 +35,18 @@
 ## Phase 3: Intelligence & Interactivity (Week 3)
 *Focus: Better reasoning and user control.*
 
-- [ ] **Task 3.1: The Judge Agent**
-    - [ ] Create `core/judge.py`.
-    - [ ] Implement simple prompt loop using `phi3.5`.
-    - [ ] Integrate Judge into the `_negotiate_plan` method in `Spine`.
+- [x] **Task 3.1: The Judge Agent**
+    - [x] Create `core/judge.py`.
+    - [x] Implement simple prompt loop using `phi3.5`.
+    - [x] Integrate Judge into the `_negotiate_plan` method in `Spine`.
 
-- [ ] **Task 3.2: Interactive Gating**
-    - [ ] Add `await input("Press Enter to execute Plan...")` in `run_autonomous_loop`.
+- [x] **Task 3.2: Interactive Gating**
+    - [x] Add `await input("Press Enter to execute Plan...")` in `run_autonomous_loop`.
     - [ ] (Optional) Allow user to edit the JSON plan before confirmation.
 
-- [ ] **Task 3.3: Rich Logging**
-    - [ ] Install `rich` library.
-    - [ ] Create `tools/logger.py` to render the Plan as a Tree and status as Spinners.
+- [x] **Task 3.3: Rich Logging**
+    - [x] Install `rich` library.
+    - [x] Create `tools/logger.py` to render the Plan as a Tree and status as Spinners.
 
 ## Success Criteria
 1.  **Zero Parse Errors:** System never fails due to malformed LLM output.

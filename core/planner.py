@@ -89,9 +89,9 @@ class GeminiClient:
         Original Context: {original_plan.context}
 
         Researcher Feedback:
-        - Relevant Files: {feedback.summary.relevant_files}
-        - Constraints: {feedback.summary.technical_constraints}
-        - Missing Info: {feedback.summary.missing_information}
+        - Hard Constraints: {feedback.summary.hard_constraints}
+        - Soft Constraints: {feedback.summary.soft_constraints}
+        - Missing Info: {feedback.summary.known_unknowns}
         - Message: {feedback.message}
 
         Please refine the plan to address these constraints and missing information.

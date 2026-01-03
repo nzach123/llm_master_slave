@@ -220,11 +220,11 @@ class Spine:
                 judge_task = (
                     f"Evaluate the following plan against the researcher's feedback.\n\n"
                     f"Plan Task: {plan.task}\n"
-                    f"Plan Steps: {plan.steps}\n\n"
+
                     f"Researcher Feedback:\n"
-                    f"Feasibility Score: {feedback.summary.feasibility_score}\n"
-                    f"Constraints: {feedback.summary.technical_constraints}\n"
-                    f"Missing Info: {feedback.summary.missing_information}\n"
+                    f"Hard Constraints: {feedback.summary.hard_constraints}\n"
+                    f"Soft Constraints: {feedback.summary.soft_constraints}\n"
+                    f"Missing Info/Unknowns: {feedback.summary.known_unknowns}\n"
                     f"Message: {feedback.message}\n"
                 )
 
