@@ -60,7 +60,7 @@ def get_queue():
 # =============================================================================
 
 @mcp.tool()
-def dispatch_to_coder(task: str, context: Optional[Dict[str, Any]] = None) -> str:
+async def dispatch_to_coder(task: str, context: Optional[Dict[str, Any]] = None) -> str:
     """
     Dispatch a coding task to the local Ollama Coder agent.
     
@@ -78,12 +78,12 @@ def dispatch_to_coder(task: str, context: Optional[Dict[str, Any]] = None) -> st
         task_description=task,
         context=context or {}
     )
-    result = spine.dispatch_to_agent(step)
+    result = await spine.dispatch_to_agent(step)
     return result.message
 
 
 @mcp.tool()
-def dispatch_to_researcher(query: str, context: Optional[Dict[str, Any]] = None) -> str:
+async def dispatch_to_researcher(query: str, context: Optional[Dict[str, Any]] = None) -> str:
     """
     Query the Researcher agent for project analysis or context gathering.
     
@@ -101,12 +101,12 @@ def dispatch_to_researcher(query: str, context: Optional[Dict[str, Any]] = None)
         task_description=query,
         context=context or {}
     )
-    result = spine.dispatch_to_agent(step)
+    result = await spine.dispatch_to_agent(step)
     return result.message
 
 
 @mcp.tool()
-def dispatch_to_reviewer(code: str, context: Optional[Dict[str, Any]] = None) -> str:
+async def dispatch_to_reviewer(code: str, context: Optional[Dict[str, Any]] = None) -> str:
     """
     Send code to the Reviewer agent for quality analysis.
     
@@ -124,7 +124,7 @@ def dispatch_to_reviewer(code: str, context: Optional[Dict[str, Any]] = None) ->
         task_description=f"Review the following code:\n\n{code}",
         context=context or {}
     )
-    result = spine.dispatch_to_agent(step)
+    result = await spine.dispatch_to_agent(step)
     return result.message
 
 
@@ -133,7 +133,7 @@ def dispatch_to_reviewer(code: str, context: Optional[Dict[str, Any]] = None) ->
 # =============================================================================
 
 @mcp.tool()
-def run_autonomous_loop(intent: str, max_retries: int = 3) -> str:
+async def run_autonomous_loop(intent: str, max_retries: int = 3) -> str:
     """
     Execute the full autonomous loop: Plan → Execute → Verify.
     
@@ -153,7 +153,7 @@ def run_autonomous_loop(intent: str, max_retries: int = 3) -> str:
         Final result message with verification steps
     """
     spine = get_spine()
-    result = spine.run_autonomous_loop(intent, max_retries=max_retries)
+    result = await spine.run_autonomous_loop(intent, max_retries=max_retries)
     return f"Status: {result.status}\n\n{result.message}"
 
 
@@ -192,7 +192,7 @@ def get_pending_tasks() -> List[Dict[str, Any]]:
 
 
 @mcp.tool()
-def process_next_task() -> str:
+async def process_next_task() -> str:
     """
     Execute the next pending task from the queue.
     
@@ -210,7 +210,7 @@ def process_next_task() -> str:
     queue.update_task_status(task["task_id"], "running")
     
     try:
-        result = spine.run_autonomous_loop(task["intent"], existing_task_id=task["task_id"])
+        result = await spine.run_autonomous_loop(task["intent"], existing_task_id=task["task_id"])
         queue.update_task_status(task["task_id"], "completed", result.message)
         return f"Task {task['task_id']} completed: {result.message[:500]}"
     except Exception as e:

@@ -2,6 +2,7 @@ import psutil
 import subprocess
 import logging
 import time
+import asyncio
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +47,7 @@ def check_resources_threshold(min_gb=2.0):
         
     return True
 
-def wait_for_resources(min_gb=2.0, timeout_seconds=600, check_interval=30):
+async def wait_for_resources(min_gb=2.0, timeout_seconds=600, check_interval=30):
     """
     Wait for resources to become available.
 
@@ -66,7 +67,7 @@ def wait_for_resources(min_gb=2.0, timeout_seconds=600, check_interval=30):
     logger.info(f"Resources low (<{min_gb}GB). Entering wait loop (timeout={timeout_seconds}s)...")
 
     while time.time() - start_time < timeout_seconds:
-        time.sleep(check_interval)
+        await asyncio.sleep(check_interval)
         if check_resources_threshold(min_gb):
             logger.info("Resources recovered.")
             return True

@@ -1,5 +1,6 @@
 import argparse
 import os
+import asyncio
 from core.hub import Spine
 
 def ensure_project_structure():
@@ -10,7 +11,7 @@ def ensure_project_structure():
             os.makedirs(d)
             print(f"Created directory: {d}")
 
-def main():
+async def main():
     ensure_project_structure()
     parser = argparse.ArgumentParser(description="Conductor Spine Controller")
     parser.add_argument("--autonomous", metavar="INTENT", type=str, help="Run autonomous loop with user intent")
@@ -36,7 +37,7 @@ def main():
             for task in running:
                 print(f"\nResuming Task {task['task_id']}: {task['intent']}")
                 try:
-                    result = spine.run_autonomous_loop(task["intent"], existing_task_id=task["task_id"])
+                    result = await spine.run_autonomous_loop(task["intent"], existing_task_id=task["task_id"])
                     queue.update_task_status(task["task_id"], "completed", result.message)
                     print(f"Task {task['task_id']} completed.")
                 except Exception as e:
@@ -54,7 +55,7 @@ def main():
             print(f"\nProcessing Task {task['task_id']}: {task['intent']}")
             queue.update_task_status(task["task_id"], "running")
             try:
-                result = spine.run_autonomous_loop(task["intent"], existing_task_id=task["task_id"])
+                result = await spine.run_autonomous_loop(task["intent"], existing_task_id=task["task_id"])
                 queue.update_task_status(task["task_id"], "completed", result.message)
                 print(f"Task {task['task_id']} completed.")
             except Exception as e:
@@ -67,7 +68,7 @@ def main():
         # Automatically track this one-off task in the queue too
         task_id = queue.add_task(args.autonomous, status="running")
         try:
-            result = spine.run_autonomous_loop(args.autonomous, existing_task_id=task_id)
+            result = await spine.run_autonomous_loop(args.autonomous, existing_task_id=task_id)
             queue.update_task_status(task_id, "completed", result.message)
             print(f"Loop finished. Result: {result.message}")
         except Exception as e:
@@ -78,6 +79,7 @@ def main():
         print("Starting Interactive Mode. Type 'exit' to quit.")
         while True:
             try:
+                # Use standard input/output for now, might upgrade to async input later
                 user_input = input("\n>> Enter task: ").strip()
                 if not user_input:
                     continue
@@ -89,7 +91,7 @@ def main():
                 task_id = queue.add_task(user_input, status="running")
                 
                 try:
-                    result = spine.run_autonomous_loop(user_input, existing_task_id=task_id)
+                    result = await spine.run_autonomous_loop(user_input, existing_task_id=task_id)
                     queue.update_task_status(task_id, "completed", result.message)
                     print(f"Task completed.\nResult: {result.message}")
                 except Exception as e:
@@ -102,8 +104,8 @@ def main():
                 
     else:
         print("Starting Spine Mock Loop...")
-        result = spine.run_mock_loop()
+        result = await spine.run_mock_loop()
         print(f"Loop finished. Result: {result.message}")
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())

@@ -5,11 +5,13 @@ import re
 import xml.etree.ElementTree as ET
 from typing import List
 import json
+import asyncio
 from tenacity import retry, stop_after_attempt, wait_fixed
 from core.config import load_config, setup_logging
 from core.specs import DispatchStep, AgentResult, ToolCall, KnowledgeSummary, FeasibilityCheck, SpokeResponse, ResearcherOutput
 from core.planner import GeminiClient
 from core.spokes import CoderSpoke, ReviewerSpoke, ResearcherSpoke
+from core.judge import JudgeSpoke
 from core.troubleshooter import Troubleshooter
 # from core.parsing import TagParser # REMOVED: Replaced by structured JSON
 from core.consensus import ConsensusScorer
@@ -19,6 +21,7 @@ from tools import patcher
 from tools.executor import run_pytest, parse_pytest_output
 from tools.queue import TaskQueue
 from tools.context import get_project_context
+from tools.logger import rich_logger
 
 class Spine:
     def __init__(self):
@@ -32,6 +35,7 @@ class Spine:
         self.coder = CoderSpoke(base_url, self.config.get("CODER_MODEL"))
         self.reviewer = ReviewerSpoke(base_url, self.config.get("REVIEWER_MODEL"))
         self.researcher = ResearcherSpoke(base_url, self.config.get("CODER_MODEL")) # Reuse coder model for now or separate
+        self.judge = JudgeSpoke(base_url, self.config.get("JUDGE_MODEL"))
         self.troubleshooter = Troubleshooter(base_url, self.config.get("CODER_MODEL")) # Use robust model for troubleshooting
         
         # Initialize TagParser
@@ -41,7 +45,10 @@ class Spine:
         self.queue = TaskQueue()
 
         # Initialize Consensus Scorer
-        self.scorer = ConsensusScorer()
+        # self.scorer = ConsensusScorer() # REPLACED by Judge
+
+        # Resource Mutex
+        self.resource_lock = asyncio.Lock()
 
         try:
             self.planner = GeminiClient()
@@ -50,29 +57,36 @@ class Spine:
             self.planner = None
 
     @retry(stop=stop_after_attempt(2), wait=wait_fixed(1), reraise=True)
-    def dispatch_to_agent(self, step: DispatchStep) -> SpokeResponse | AgentResult | ResearcherOutput:
-        """Dispatches a step to a specific Spoke with resource checks."""
+    async def dispatch_to_agent(self, step: DispatchStep) -> SpokeResponse | AgentResult | ResearcherOutput:
+        """Dispatches a step to a specific Spoke with resource checks and mutex."""
         self.logger.info(f"Dispatching task to agent: {step.agent}")
+        rich_logger.log_info(f"Dispatching task to {step.agent}")
         
         # Pre-flight resource check (Wait-State Policy)
         skip_check = os.getenv("SKIP_RESOURCE_CHECK", "false").lower() == "true"
         if not skip_check:
             # Wait up to 10 minutes (600s) for resources
-            if not wait_for_resources(min_gb=2.0, timeout_seconds=600):
+            if not await wait_for_resources(min_gb=2.0, timeout_seconds=600):
                  error_msg = "System resources below threshold (2GB) after timeout. Terminating for stability."
                  self.logger.critical(error_msg)
+                 rich_logger.log_error(error_msg)
                  raise RuntimeError(error_msg)
 
-        if step.agent.lower() == "coder":
-            return self.coder.handle_task(step)
-        elif step.agent.lower() == "reviewer":
-            return self.reviewer.handle_task(step)
-        elif step.agent.lower() == "researcher":
-            # For researcher, we expect JSON output.
-            result = self.researcher.handle_task(step)
-            return result
-        else:
-            raise ValueError(f"Unknown agent: {step.agent}")
+        async with self.resource_lock:
+            with rich_logger.log_status(f"Agent {step.agent} working..."):
+                if step.agent.lower() == "coder":
+                    return await self.coder.handle_task(step)
+                elif step.agent.lower() == "reviewer":
+                    return await self.reviewer.handle_task(step)
+                elif step.agent.lower() == "researcher":
+                    # For researcher, we expect JSON output.
+                    result = await self.researcher.handle_task(step)
+                    return result
+                elif step.agent.lower() == "judge":
+                    # Judge output is specialized
+                    return await self.judge.handle_task(step)
+                else:
+                    raise ValueError(f"Unknown agent: {step.agent}")
     
     def _parse_tool_calls(self, spoke_response: SpokeResponse) -> List[ToolCall]:
         """
@@ -102,6 +116,7 @@ class Spine:
                     patcher.write_file(tool_call.path, tool_call.content)
                     results["success"].append(f"Wrote {tool_call.path}")
                     self.logger.info(f"Successfully wrote file: {tool_call.path}")
+                    rich_logger.log_success(f"Wrote {tool_call.path}")
                     
                 elif tool_call.action == "apply_patch":
                      # Pydantic model makes these optional, but required for apply_patch
@@ -116,30 +131,36 @@ class Spine:
                     if success:
                         results["success"].append(f"Patched {tool_call.path}")
                         self.logger.info(f"Successfully patched file: {tool_call.path}")
+                        rich_logger.log_success(f"Patched {tool_call.path}")
                     else:
-                        results["failed"].append(
-                            f"Patch failed for {tool_call.path}: search block not found"
-                        )
+                        error_msg = f"Patch failed for {tool_call.path}: search block not found"
+                        results["failed"].append(error_msg)
+                        rich_logger.log_error(error_msg)
                         
             except patcher.PathSecurityError as e:
                 error_msg = f"Security violation: {tool_call.path} - {str(e)}"
                 results["failed"].append(error_msg)
                 self.logger.error(error_msg)
+                rich_logger.log_error(error_msg)
             except Exception as e:
                 error_msg = f"Error executing {tool_call.action} on {tool_call.path}: {str(e)}"
                 results["failed"].append(error_msg)
                 self.logger.error(error_msg)
+                rich_logger.log_error(error_msg)
         
         return results
 
-    def _negotiate_plan(self, user_intent: str, max_turns: int = 3) -> DispatchStep:
+    async def _negotiate_plan(self, user_intent: str, max_turns: int = 3) -> DispatchStep:
         """
         Collaborative planning loop with real Researcher analysis.
         """
         self.logger.info("Starting negotiation loop...")
+        rich_logger.log_info("Starting negotiation loop...")
 
         # 1. Hub proposes Plan v1
-        plan = self.planner.generate_plan(user_intent)
+        with rich_logger.log_status("Planner generating initial plan..."):
+            plan = self.planner.generate_plan(user_intent)
+        rich_logger.log_plan(plan.model_dump())
 
         # Gather Project Context for Researcher
         try:
@@ -156,6 +177,7 @@ class Spine:
 
         for turn in range(max_turns):
             self.logger.info(f"Negotiation Turn {turn + 1}")
+            rich_logger.log_info(f"Negotiation Turn {turn + 1}")
 
             # 2. Researcher analyzes feasibility
             # We explicitly ask the Researcher to look at the plan AND the context
@@ -167,7 +189,7 @@ class Spine:
 
             try:
                 # This returns a ResearcherOutput object directly now because of the Spoke update
-                research_output = self.dispatch_to_agent(research_step)
+                research_output = await self.dispatch_to_agent(research_step)
                 
                 # Verify it's the right type (it should be since dispatch_to_agent calls handle_task -> validate)
                 if not hasattr(research_output, "project_overview"):
@@ -179,32 +201,71 @@ class Spine:
                      pass
                 else:
                     self.logger.info(f"Researcher analysis complete. Hard constraints found: {len(research_output.hard_constraints.cannot_change)}")
+                    rich_logger.log_info(f"Researcher found {len(research_output.hard_constraints.cannot_change)} hard constraints")
 
                 feedback = FeasibilityCheck(
                     summary=research_output,
                     message="Researcher provided strict analysis."
                 )
 
-                # 3. Score Consensus
-                score = self.scorer.evaluate(plan.model_dump(), feedback)
-                self.logger.info(f"Consensus Score: {score}")
+                # 3. Judge Evaluates Plan (Replaces ConsensusScorer)
+                # Note: dispatch_to_agent handles resource locking, but here we were calling judge.evaluate_plan directly.
+                # To ensure consistency and safety, we should wrap the judge call or use dispatch_to_agent if possible.
+                # However, evaluate_plan is a convenience method on JudgeSpoke.
+                # Let's use dispatch_to_agent to respect the resource lock.
 
-                if score > 0.8:
-                    self.logger.info("Consensus reached!")
+                self.logger.info("Submitting plan to Judge for evaluation...")
+
+                # Construct the task for the judge manually to use dispatch_to_agent
+                judge_task = (
+                    f"Evaluate the following plan against the researcher's feedback.\n\n"
+                    f"Plan Task: {plan.task}\n"
+                    f"Plan Steps: {plan.steps}\n\n"
+                    f"Researcher Feedback:\n"
+                    f"Feasibility Score: {feedback.summary.feasibility_score}\n"
+                    f"Constraints: {feedback.summary.technical_constraints}\n"
+                    f"Missing Info: {feedback.summary.missing_information}\n"
+                    f"Message: {feedback.message}\n"
+                )
+
+                judge_step = DispatchStep(
+                    agent="judge",
+                    task=judge_task,
+                    context_files=[]
+                )
+
+                # Use dispatch_to_agent to ensure resource locking
+                judge_result = await self.dispatch_to_agent(judge_step)
+
+                self.logger.info(f"Judge Score: {judge_result.score} - Decision: {judge_result.decision}")
+                self.logger.info(f"Judge Reasoning: {judge_result.reasoning}")
+
+                if judge_result.score > 0.8:
+                    rich_logger.log_success(f"Judge APPROVED (Score: {judge_result.score})")
+                    self.logger.info("Judge APPROVED the plan!")
                     return plan
+                else:
+                    rich_logger.log_warning(f"Judge REJECTED (Score: {judge_result.score}): {judge_result.reasoning}")
 
                 # 4. Refine Plan
-                self.logger.info("Score too low. Refining plan...")
-                plan = self.planner.refine_plan(plan, feedback)
+                self.logger.info("Judge REJECTED the plan. Refining...")
+                rich_logger.log_info("Refining plan based on feedback...")
+                # We append the judge's reasoning to the feedback message for the planner
+                feedback.message += f"\n\nJudge Feedback:\n{judge_result.reasoning}"
+
+                with rich_logger.log_status("Planner refining plan..."):
+                    plan = self.planner.refine_plan(plan, feedback)
+                rich_logger.log_plan(plan.model_dump())
 
             except Exception as e:
                  self.logger.warning(f"Negotiation step failed: {e}. Proceeding with current plan.")
+                 rich_logger.log_warning(f"Negotiation failed: {e}. Proceeding with current plan.")
                  return plan
 
         return plan
 
 
-    def run_autonomous_loop(self, user_intent: str, max_retries: int = 3, existing_task_id: str = None) -> AgentResult:
+    async def run_autonomous_loop(self, user_intent: str, max_retries: int = 3, existing_task_id: str = None) -> AgentResult:
         """
         Executes an autonomous loop with retry capability: Plan -> Execute -> Verify -> Retry if needed.
         
@@ -222,6 +283,7 @@ class Spine:
         task_id = existing_task_id or f"task_{uuid.uuid4().hex[:8]}"
         self.logger.info(f"Starting/Resuming autonomous loop for task: {task_id}")
         self.logger.info(f"User Intent: {user_intent}")
+        rich_logger.log_info(f"Starting task: {user_intent} (ID: {task_id})")
 
         original_branch = "main"
         task_branch = None
@@ -242,6 +304,7 @@ class Spine:
         while attempt < max_retries:
             attempt += 1
             self.logger.info(f"Attempt {attempt}/{max_retries}")
+            rich_logger.log_info(f"Attempt {attempt}/{max_retries}")
             
             # Update task progress
             self.queue.update_task_state(task_id, step_index=attempt)
@@ -249,18 +312,26 @@ class Spine:
             try:
                 # 1. Negotiate Plan (New Step)
                 if attempt == 1:
-                     step = self._negotiate_plan(user_intent)
+                     step = await self._negotiate_plan(user_intent)
                 else:
                      # For retries, we might want to skip negotiation or re-negotiate with error context
                      # For now, let's just regenerate based on error context like before
-                     step = self.planner.generate_plan(user_intent, error_context)
+                     with rich_logger.log_status("Regenerating plan based on errors..."):
+                        step = self.planner.generate_plan(user_intent, error_context)
+                     rich_logger.log_plan(step.model_dump())
 
                 self.logger.info(f"Final Plan for execution: Agent={step.agent}, Task={step.task}")
+
+                # INTERACTIVE GATING
+                print(f"\nPLAN READY: {step.task}")
+                print("Press Enter to execute, or Ctrl+C to abort...")
+                # In async context, we use a thread executor for blocking input to not freeze the event loop
+                await asyncio.to_thread(input, ">> ")
 
                 # 2. Dispatch to agent
                 # Ensure we are dispatching to Coder for execution phase
                 step.agent = "coder"
-                result = self.dispatch_to_agent(step)
+                result = await self.dispatch_to_agent(step)
                 
                 # result is SpokeResponse
 
@@ -277,8 +348,10 @@ class Spine:
                 test_failures = None
                 if execution_results["success"] and not execution_results["failed"]:
                     self.logger.info("Running tests to verify changes...")
+                    rich_logger.log_info("Running verification tests...")
                     try:
-                        test_result = run_pytest(timeout=180)
+                        # Use executor to run sync test runner in thread
+                        test_result = await asyncio.to_thread(run_pytest, timeout=180)
                         if not test_result.success:
                             # Parse test output for relevant failures
                             parsed = parse_pytest_output(test_result.stdout)
@@ -287,6 +360,9 @@ class Spine:
                                 "\n".join(parsed["failed_tests"][:5])  # Limit to first 5 failures
                             )
                             self.logger.warning(f"Test failures detected: {test_failures}")
+                            rich_logger.log_error("Tests failed")
+                        else:
+                            rich_logger.log_success("Tests passed")
                     except Exception as e:
                         self.logger.warning(f"Test execution failed: {e}")
                         # Don't fail the loop if test execution itself fails
@@ -304,26 +380,31 @@ class Spine:
                     
                     error_context = "\n\n".join(error_parts)
                     self.logger.warning(f"Attempt {attempt} failed: {error_context}")
+                    rich_logger.log_warning(f"Attempt {attempt} failed")
                     
                     # TRIGGER TROUBLESHOOTER
                     # We try to recover using the Troubleshooter before generic retry
                     try:
                         self.logger.info("Triggering Troubleshooter Protocol...")
+                        rich_logger.log_info("Triggering Troubleshooter Protocol...")
                         # Get git diff for context
                         from tools.git_tools import get_diff
                         current_diff = get_diff() # Gets unstaged changes (or we might need staged)
 
-                        fix_plan = self.troubleshooter.analyze_failure(step.task, error_context, current_diff)
+                        with rich_logger.log_status("Troubleshooter analyzing failure..."):
+                            fix_plan = self.troubleshooter.analyze_failure(step.task, error_context, current_diff)
                         self.logger.info(f"Troubleshooter thoughts: {fix_plan.thoughts}")
 
                         fix_results = self.troubleshooter.apply_fix(fix_plan)
 
                         if fix_results["success"] and not fix_results["failed"]:
                             self.logger.info("Troubleshooter applied fix. Re-verifying...")
+                            rich_logger.log_info("Troubleshooter applied fix. Re-verifying...")
                             # Re-run tests immediately to see if fix worked
-                            test_result = run_pytest(timeout=180)
+                            test_result = await asyncio.to_thread(run_pytest, timeout=180)
                             if test_result.success:
                                 self.logger.info("Troubleshooter fix VERIFIED! Proceeding to success.")
+                                rich_logger.log_success("Troubleshooter fix VERIFIED!")
                                 # Return success immediately, breaking the retry loop
                                 return AgentResult(
                                     status="ok",
@@ -332,12 +413,15 @@ class Spine:
                                 )
                             else:
                                 self.logger.warning("Troubleshooter fix failed verification.")
+                                rich_logger.log_warning("Troubleshooter fix failed verification.")
                                 error_context += f"\n\nTroubleshooter Attempt Failed. New Error:\n{test_result.stdout}"
                         else:
                              self.logger.warning(f"Troubleshooter failed to apply fix: {fix_results['failed']}")
+                             rich_logger.log_error("Troubleshooter failed to apply fix")
 
                     except Exception as te:
                         self.logger.error(f"Troubleshooter crashed: {te}")
+                        rich_logger.log_error(f"Troubleshooter crashed: {te}")
                         # Fallback to standard retry
 
                     if attempt < max_retries:
@@ -345,6 +429,7 @@ class Spine:
                         continue
                     else:
                         self.logger.error("Max retries reached. Terminating and rolling back.")
+                        rich_logger.log_error("Max retries reached. Rolling back.")
                         try:
                             from tools.git_tools import rollback
                             # Close TinyDB to release file lock before git operations
@@ -362,6 +447,7 @@ class Spine:
                 else:
                     # Success!
                     self.logger.info(f"Task completed successfully on attempt {attempt}")
+                    rich_logger.log_success("Task completed successfully!")
                     
                     # Generate manual verification steps
                     try:
@@ -386,6 +472,7 @@ class Spine:
             except Exception as e:
                 error_context = f"Exception during execution: {str(e)}"
                 self.logger.error(f"Attempt {attempt} failed with exception: {e}")
+                rich_logger.log_error(f"Exception during execution: {e}")
                 
                 if attempt < max_retries:
                     self.logger.info("Retrying after exception...")
@@ -409,7 +496,7 @@ class Spine:
             artifacts=[]
         )
 
-    def run_mock_loop(self):
+    async def run_mock_loop(self):
         """A simple mock loop for verification."""
         task_id = "mock_task_001"
         self.logger.info(f"Starting mock loop for task: {task_id}")
@@ -427,7 +514,7 @@ class Spine:
         )
 
         # Mock dispatch (since we might not have Ollama running)
-        result = self.dispatch_to_agent(step)
+        result = await self.dispatch_to_agent(step)
 
         self.logger.info(f"Mock Loop Finished")
         return AgentResult(status="ok", message="Mock loop finished", artifacts=[])

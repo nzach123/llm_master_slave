@@ -19,6 +19,7 @@ def load_config():
         "OLLAMA_BASE_URL": os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"),
         "CODER_MODEL": os.getenv("CODER_MODEL", "qwen2.5-coder:7b"),
         "REVIEWER_MODEL": os.getenv("REVIEWER_MODEL", "phi3.5:latest"),
+        "JUDGE_MODEL": os.getenv("JUDGE_MODEL", "phi3.5:latest"),
     }
 
 def setup_logging(log_file="activity.log"):

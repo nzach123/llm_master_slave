@@ -5,7 +5,7 @@ from abc import ABC, abstractmethod
 from typing import Type, TypeVar
 from pydantic import BaseModel
 from core.specs import DispatchStep, AgentResult, SpokeResponse, ReviewResult, KnowledgeSummary, ResearcherOutput
-from core.roles import CODER_SYSTEM_PROMPT, REVIEWER_SYSTEM_PROMPT, RESEARCHER_SYSTEM_PROMPT
+from core.roles import CODER_SYSTEM_PROMPT, REVIEWER_SYSTEM_PROMPT, RESEARCHER_SYSTEM_PROMPT, TROUBLESHOOTER_SYSTEM_PROMPT
 
 logger = logging.getLogger(__name__)
 
@@ -36,8 +36,8 @@ class BaseSpoke(ABC):
             f"Task: {step.task}"
         )
 
-    def handle_task(self, step: DispatchStep) -> T:
-        """Sends a synchronous request to Ollama with JSON enforcement."""
+    async def handle_task(self, step: DispatchStep) -> T:
+        """Sends an asynchronous request to Ollama with JSON enforcement."""
         system_prompt = self.get_system_prompt()
         user_prompt = self.build_prompt(step)
 
@@ -54,9 +54,9 @@ class BaseSpoke(ABC):
 
         logger.info(f"Sending task to Ollama model: {self.model}")
         
-        with httpx.Client(timeout=300.0) as client:
+        async with httpx.AsyncClient(timeout=300.0) as client:
             # Using native Ollama /api/chat endpoint which supports 'format': 'json'
-            response = client.post(
+            response = await client.post(
                 f"{self.base_url}/api/chat",
                 json=payload
             )
@@ -88,16 +88,6 @@ class ReviewerSpoke(BaseSpoke):
     @property
     def response_model(self) -> Type[ReviewResult]:
         return ReviewResult
-
-from core.roles import TROUBLESHOOTER_SYSTEM_PROMPT
-
-class ResearcherSpoke(BaseSpoke):
-    def get_system_prompt(self) -> str:
-        return RESEARCHER_SYSTEM_PROMPT
-
-from core.specs import DispatchStep, AgentResult, SpokeResponse, ReviewResult, ResearcherOutput
-
-# ... (Previous imports remain, ensuring we import ResearcherOutput)
 
 class ResearcherSpoke(BaseSpoke):
     def get_system_prompt(self) -> str:

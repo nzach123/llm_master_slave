@@ -1,7 +1,7 @@
 import pytest
 import httpx
 import json
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, AsyncMock
 from core.spokes import CoderSpoke, ReviewerSpoke, ResearcherSpoke
 from core.specs import DispatchStep, SpokeResponse, ReviewResult, ResearcherOutput
 
@@ -28,8 +28,9 @@ def test_researcher_spoke_response():
     researcher = ResearcherSpoke("http://mock", "model")
     assert researcher.response_model == ResearcherOutput
 
-@patch("httpx.Client.post")
-def test_coder_handle_task(mock_post):
+@pytest.mark.asyncio
+@patch("httpx.AsyncClient.post")
+async def test_coder_handle_task(mock_post):
     """Test Coder execution flow."""
     mock_post.return_value = MagicMock(
         status_code=200,
@@ -40,13 +41,14 @@ def test_coder_handle_task(mock_post):
     
     coder = CoderSpoke("http://mock", "model")
     step = DispatchStep(agent="coder", task="task", context_files=[])
-    result = coder.handle_task(step)
+    result = await coder.handle_task(step)
 
     assert isinstance(result, SpokeResponse)
     assert result.thoughts == "ok"
 
-@patch("httpx.Client.post")
-def test_reviewer_handle_task(mock_post):
+@pytest.mark.asyncio
+@patch("httpx.AsyncClient.post")
+async def test_reviewer_handle_task(mock_post):
     """Test Reviewer execution flow."""
     mock_post.return_value = MagicMock(
         status_code=200,
@@ -57,14 +59,15 @@ def test_reviewer_handle_task(mock_post):
     
     reviewer = ReviewerSpoke("http://mock", "model")
     step = DispatchStep(agent="reviewer", task="review", context_files=[])
-    result = reviewer.handle_task(step)
+    result = await reviewer.handle_task(step)
 
     assert isinstance(result, ReviewResult)
     assert result.approved is True
     assert result.comments == ["good"]
 
-@patch("httpx.Client.post")
-def test_researcher_handle_task(mock_post):
+@pytest.mark.asyncio
+@patch("httpx.AsyncClient.post")
+async def test_researcher_handle_task(mock_post):
     """Test Researcher execution flow."""
     # Create a valid ResearcherOutput JSON structure
     valid_output = {
@@ -115,7 +118,7 @@ def test_researcher_handle_task(mock_post):
     
     researcher = ResearcherSpoke("http://mock", "model")
     step = DispatchStep(agent="researcher", task="research", context_files=[])
-    result = researcher.handle_task(step)
+    result = await researcher.handle_task(step)
     
     assert isinstance(result, ResearcherOutput)
     assert result.project_overview.name == "Test Project"
