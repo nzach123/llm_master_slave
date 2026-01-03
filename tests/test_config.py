@@ -24,7 +24,7 @@ def test_load_config_defaults(tmp_path):
     if "REVIEWER_MODEL" in os.environ: del os.environ["REVIEWER_MODEL"]
     
     config = load_config()
-    assert config["OLLAMA_BASE_URL"] == "http://localhost:11434/v1"
+    assert config["OLLAMA_BASE_URL"] == "http://localhost:11434"
     assert config["CODER_MODEL"] == "qwen2.5-coder:7b"
     assert config["REVIEWER_MODEL"] == "phi3.5:latest"
 

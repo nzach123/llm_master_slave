@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import MagicMock, patch
 from core.hub import Spine
-from core.specs import DispatchStep, KnowledgeSummary, FeasibilityCheck
+from core.specs import DispatchStep, ResearcherOutput, FeasibilityCheck
 from core.consensus import ConsensusScorer
 
 class TestConsensusLoop(unittest.TestCase):
@@ -16,6 +16,7 @@ class TestConsensusLoop(unittest.TestCase):
              patch('core.hub.CoderSpoke'), \
              patch('core.hub.ReviewerSpoke'), \
              patch('core.hub.ResearcherSpoke'), \
+             patch('core.hub.Troubleshooter'), \
              patch('core.hub.GeminiClient', return_value=self.mock_planner), \
              patch('core.hub.TaskQueue'):
 
@@ -23,6 +24,23 @@ class TestConsensusLoop(unittest.TestCase):
             # Inject our mock planner explicitly just in case
             self.spine.planner = self.mock_planner
             self.spine.scorer = self.mock_scorer
+
+    def _get_mock_researcher_output(self):
+        # We don't actually use score inside ResearcherOutput,
+        # the ConsensusScorer evaluates the output against the plan.
+        # So we just return a valid structure.
+        return ResearcherOutput(
+            project_overview={
+                "name": "Test", "primary_language": "Python", "frameworks": [],
+                "runtime_targets": [], "build_system": None
+            },
+            structure_map={"entry_points": [], "core_modules": []},
+            hard_constraints={"framework_versions": {}, "external_interfaces": [], "cannot_change": []},
+            soft_constraints={"coding_patterns": [], "style_conventions": [], "existing_abstractions": [], "tech_debt_notes": []},
+            known_unknowns={"missing_context": [], "ambiguous_areas": []},
+            planner_guardrails={"do_not_assume": [], "requires_validation": []},
+            evidence_index={"files_examined": [], "configs_examined": [], "commands_run": []}
+        )
 
     def test_negotiation_loop_success(self):
         """Test that negotiation stops when consensus is reached."""
@@ -35,19 +53,13 @@ class TestConsensusLoop(unittest.TestCase):
         )
         self.mock_planner.generate_plan.return_value = initial_plan
 
-        # 2. Researcher Feedback (Good)
-        summary = KnowledgeSummary(
-            relevant_files=[],
-            technical_constraints=[],
-            missing_information=[],
-            feasibility_score=0.9
-        )
-        feedback_json = summary.model_dump_json()
+        # 2. Researcher Feedback
+        # The dispatch_to_agent now returns a ResearcherOutput object directly
+        researcher_output = self._get_mock_researcher_output()
+        self.spine.dispatch_to_agent = MagicMock(return_value=researcher_output)
 
-        # Mock dispatcher to return Researcher feedback
-        mock_result = MagicMock()
-        mock_result.thoughts = feedback_json
-        self.spine.dispatch_to_agent = MagicMock(return_value=mock_result)
+        # Mock Consensus Scorer to return high score
+        self.spine.scorer.evaluate = MagicMock(return_value=0.9)
 
         # Execute
         final_plan = self.spine._negotiate_plan("Build a spaceship")
@@ -68,27 +80,12 @@ class TestConsensusLoop(unittest.TestCase):
         )
         self.mock_planner.generate_plan.return_value = initial_plan
 
-        # 2. Researcher Feedback (Bad then Good)
-        bad_summary = KnowledgeSummary(
-            relevant_files=[],
-            technical_constraints=["No fuel"],
-            missing_information=[],
-            feasibility_score=0.4
-        )
-        good_summary = KnowledgeSummary(
-            relevant_files=[],
-            technical_constraints=[],
-            missing_information=[],
-            feasibility_score=0.95
-        )
+        # 2. Researcher Feedback
+        researcher_output = self._get_mock_researcher_output()
+        self.spine.dispatch_to_agent = MagicMock(return_value=researcher_output)
 
-        mock_result_bad = MagicMock()
-        mock_result_bad.thoughts = bad_summary.model_dump_json()
-
-        mock_result_good = MagicMock()
-        mock_result_good.thoughts = good_summary.model_dump_json()
-
-        self.spine.dispatch_to_agent = MagicMock(side_effect=[mock_result_bad, mock_result_good])
+        # Mock Consensus Scorer to return LOW then HIGH
+        self.spine.scorer.evaluate = MagicMock(side_effect=[0.4, 0.9])
 
         # Mock Refinement
         refined_plan = DispatchStep(

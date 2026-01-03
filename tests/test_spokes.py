@@ -1,8 +1,9 @@
 import pytest
 import httpx
+import json
 from unittest.mock import patch, MagicMock
 from core.spokes import CoderSpoke, ReviewerSpoke, ResearcherSpoke
-from core.specs import DispatchStep, SpokeResponse, ReviewResult, KnowledgeSummary
+from core.specs import DispatchStep, SpokeResponse, ReviewResult, ResearcherOutput
 
 @pytest.fixture
 def mock_config():
@@ -23,9 +24,9 @@ def test_reviewer_spoke_response():
     assert reviewer.response_model == ReviewResult
 
 def test_researcher_spoke_response():
-    """Test ResearcherSpoke returns KnowledgeSummary."""
+    """Test ResearcherSpoke returns ResearcherOutput."""
     researcher = ResearcherSpoke("http://mock", "model")
-    assert researcher.response_model == KnowledgeSummary
+    assert researcher.response_model == ResearcherOutput
 
 @patch("httpx.Client.post")
 def test_coder_handle_task(mock_post):
@@ -65,10 +66,50 @@ def test_reviewer_handle_task(mock_post):
 @patch("httpx.Client.post")
 def test_researcher_handle_task(mock_post):
     """Test Researcher execution flow."""
+    # Create a valid ResearcherOutput JSON structure
+    valid_output = {
+        "project_overview": {
+            "name": "Test Project",
+            "primary_language": "Python",
+            "frameworks": ["Django"],
+            "runtime_targets": ["Linux"],
+            "build_system": "Poetry"
+        },
+        "structure_map": {
+            "entry_points": [],
+            "core_modules": []
+        },
+        "hard_constraints": {
+            "language_version": "3.12",
+            "framework_versions": {},
+            "external_interfaces": [],
+            "cannot_change": []
+        },
+        "soft_constraints": {
+            "coding_patterns": [],
+            "style_conventions": [],
+            "existing_abstractions": [],
+            "tech_debt_notes": []
+        },
+        "known_unknowns": {
+            "missing_context": [],
+            "ambiguous_areas": []
+        },
+        "planner_guardrails": {
+            "do_not_assume": [],
+            "requires_validation": []
+        },
+        "evidence_index": {
+            "files_examined": [],
+            "configs_examined": [],
+            "commands_run": []
+        }
+    }
+
     mock_post.return_value = MagicMock(
         status_code=200,
         json=lambda: {
-            "message": {"content": '{"relevant_files": ["a.py"], "technical_constraints": [], "missing_information": [], "feasibility_score": 0.9}'}
+            "message": {"content": json.dumps(valid_output)}
         }
     )
     
@@ -76,5 +117,5 @@ def test_researcher_handle_task(mock_post):
     step = DispatchStep(agent="researcher", task="research", context_files=[])
     result = researcher.handle_task(step)
     
-    assert isinstance(result, KnowledgeSummary)
-    assert result.relevant_files == ["a.py"]
+    assert isinstance(result, ResearcherOutput)
+    assert result.project_overview.name == "Test Project"

@@ -10,6 +10,7 @@ from core.config import load_config, setup_logging
 from core.specs import DispatchStep, AgentResult, ToolCall, KnowledgeSummary, FeasibilityCheck, SpokeResponse, ResearcherOutput
 from core.planner import GeminiClient
 from core.spokes import CoderSpoke, ReviewerSpoke, ResearcherSpoke
+from core.troubleshooter import Troubleshooter
 # from core.parsing import TagParser # REMOVED: Replaced by structured JSON
 from core.consensus import ConsensusScorer
 from tools.git_tools import create_checkpoint
@@ -31,6 +32,7 @@ class Spine:
         self.coder = CoderSpoke(base_url, self.config.get("CODER_MODEL"))
         self.reviewer = ReviewerSpoke(base_url, self.config.get("REVIEWER_MODEL"))
         self.researcher = ResearcherSpoke(base_url, self.config.get("CODER_MODEL")) # Reuse coder model for now or separate
+        self.troubleshooter = Troubleshooter(base_url, self.config.get("CODER_MODEL")) # Use robust model for troubleshooting
         
         # Initialize TagParser
         # self.parser = TagParser() # REMOVED
@@ -303,6 +305,41 @@ class Spine:
                     error_context = "\n\n".join(error_parts)
                     self.logger.warning(f"Attempt {attempt} failed: {error_context}")
                     
+                    # TRIGGER TROUBLESHOOTER
+                    # We try to recover using the Troubleshooter before generic retry
+                    try:
+                        self.logger.info("Triggering Troubleshooter Protocol...")
+                        # Get git diff for context
+                        from tools.git_tools import get_diff
+                        current_diff = get_diff() # Gets unstaged changes (or we might need staged)
+
+                        fix_plan = self.troubleshooter.analyze_failure(step.task, error_context, current_diff)
+                        self.logger.info(f"Troubleshooter thoughts: {fix_plan.thoughts}")
+
+                        fix_results = self.troubleshooter.apply_fix(fix_plan)
+
+                        if fix_results["success"] and not fix_results["failed"]:
+                            self.logger.info("Troubleshooter applied fix. Re-verifying...")
+                            # Re-run tests immediately to see if fix worked
+                            test_result = run_pytest(timeout=180)
+                            if test_result.success:
+                                self.logger.info("Troubleshooter fix VERIFIED! Proceeding to success.")
+                                # Return success immediately, breaking the retry loop
+                                return AgentResult(
+                                    status="ok",
+                                    message=f"Fixed by Troubleshooter:\n{fix_plan.thoughts}",
+                                    artifacts=[]
+                                )
+                            else:
+                                self.logger.warning("Troubleshooter fix failed verification.")
+                                error_context += f"\n\nTroubleshooter Attempt Failed. New Error:\n{test_result.stdout}"
+                        else:
+                             self.logger.warning(f"Troubleshooter failed to apply fix: {fix_results['failed']}")
+
+                    except Exception as te:
+                        self.logger.error(f"Troubleshooter crashed: {te}")
+                        # Fallback to standard retry
+
                     if attempt < max_retries:
                         self.logger.info("Retrying with error context...")
                         continue

@@ -89,6 +89,8 @@ class ReviewerSpoke(BaseSpoke):
     def response_model(self) -> Type[ReviewResult]:
         return ReviewResult
 
+from core.roles import TROUBLESHOOTER_SYSTEM_PROMPT
+
 class ResearcherSpoke(BaseSpoke):
     def get_system_prompt(self) -> str:
         return RESEARCHER_SYSTEM_PROMPT
@@ -104,3 +106,12 @@ class ResearcherSpoke(BaseSpoke):
     @property
     def response_model(self) -> Type[ResearcherOutput]:
         return ResearcherOutput
+
+class TroubleshooterSpoke(BaseSpoke):
+    def get_system_prompt(self) -> str:
+        return TROUBLESHOOTER_SYSTEM_PROMPT
+
+    @property
+    def response_model(self) -> Type[SpokeResponse]:
+        # Troubleshooter output is similar to Coder (thoughts + tool_calls)
+        return SpokeResponse
